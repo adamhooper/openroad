@@ -1,0 +1,5 @@
+Shell commands, with PostgreSQL 9.1:
+
+$ createdb bikefile
+$ createuser -P bikefile # with password bikefile
+$ psql bikefile -f /usr/share/postgresql/9.1/contrib/postgis-2.0/postgis.sql

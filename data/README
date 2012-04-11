@@ -1,0 +1,74 @@
+Here's how we accessed data for all these files
+
+halifax.csv: Nova Scotia bicycle accidents.
+  Years: 2006 to 2010
+  Source: Service Nova Scotia and Municipal Relations
+    Collected and provided to SNSMR by policing agencies
+  License: Public domain
+  Columns:
+    "Charges": police charges against the motor vehicle driver.
+
+      122 (2) The driver of a vehicle who has stopped as required by law at 
+      the entrance to a through highway shall yield to other vehicles 
+      within the intersection or approaching so closely on the through 
+      highway as to constitute an immediate hazard, but said driver having 
+      so yielded may proceed, and other vehicles approaching the 
+      intersection on the through highway shall yield to the vehicle so 
+      proceeding into or across the through highway. 
+
+      83 (2)  It shall be an offence for the driver of any vehicle or for 
+      the motorman of any street car to disobey the instructions of any 
+      official traffic sign or signal placed in accordance with this Act, 
+      unless otherwise directed by a peace officer. R.S., c. 293, s. 83.
+
+      93 (2)  The drivers of vehicles, pedestrians, and all other traffic 
+      approaching or at an intersection or on a part of the highway 
+      controlled by any of the traffic signals mentioned in subsection (1) 
+      shall act in obedience to the traffic signals in accordance with the 
+      following instructions: 
+
+      97 (4)  Any peace officer who is a witness to or who investigates any 
+      accident in which a vehicle upon a highway is involved, whether or 
+      not required to be reported under this Section, shall forward to the 
+      Registrar, in addition to any other report that may be required under 
+      this Section, a report setting forth full particulars of the 
+      accident, the names and addresses of the persons involved, the extent 
+      of the personal injuries or property damage, if any, and such other 
+      information as may enable the Registrar to determine whether any 
+      driver involved in or contributing to the accident should be 
+      prosecuted, and where the peace officer or any other person has laid 
+      an information against a driver of a vehicle in connection with such 
+      accident, such fact shall be stated in the report. 
+
+      170A  
+      (1) In this Section, "bicycle" includes any device designated to 
+      transport passengers and to be drawn by a bicycle.
+      (2) No person shall ride on or operate a bicycle unless the person is 
+      wearing a bicycle helmet that complies with the regulations and the 
+      chin strap of the helmet is securely fastened under the chin.
+
+      171 (2) No person shall ride a bicycle, tricycle, or similar machine 
+      on a sidewalk, provided, nothing in this Section shall be deemed or 
+      construed to prevent the use of velocipedes or similar machines by 
+      children on a sidewalk in a public square, park, city or town. 
+      (3)  Where a roadway has a bicycle lane for bicycles travelling in 
+      the same direction that a cyclist is travelling, the cyclist shall 
+      ride in the bicycle lane unless it is impracticable to do so. 
+
+      (I have to look into this one: I don't think it's right)
+      174A  (1) Notwithstanding Section 174, every motor vehicle equipped 
+      with one or more headlamps must be equipped with lighted daytime 
+      running lights or lighted headlamps at all times while being operated 
+      upon a highway within the Province.
+
+      (2) Subsection (1) does not apply to a motor vehicle registered as an 
+      antique vehicle. 2008, c. 62, s. 2.
+
+toronto.csv: Toronto bicycle accidents.
+  Years: 1986 to 2010
+  Source:
+  License: Public domain
+  Edits:
+    - removed many columns
+    - removed rows with malformed dates and integers
+    - set time-of-day on rows with malformed times to 00:00

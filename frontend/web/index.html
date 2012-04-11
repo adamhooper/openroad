@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Plot your bike path</title>
+    <link rel="stylesheet" type="text/css" href="jquery.jqplot.min.css" />
+
+    <style type="text/css">
+      ul#city {
+        margin: .5em 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      ul#city li {
+        display: inline-block;
+        width: 16.5%;
+      }
+
+      ul#city li.selected {
+        font-weight: bold;
+      }
+
+      form#origin-destination {
+        width: 100%;
+        margin: .5em 0;
+        padding: 0;
+      }
+
+      form#origin-destination div {
+        width: 49%;
+        display: inline-block;
+        text-align: center;
+      }
+
+      div#map {
+        width: 100%;
+        height: 500px;
+      }
+
+      div#data {
+        width: 100%;
+        height: 20em;
+        overflow: auto;
+      }
+
+      div#data table {
+        border-collapse: collapse;
+        border: none;
+      }
+
+      div#data th, div#data td {
+        text-align: left;
+        white-space: nowrap;
+        padding: 2px 4px;
+        font-size: .75em;
+        font-family: Georgia;
+      }
+
+      div#data .address {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <ul id="city">
+      <!--<li><a href="#vancouver">Vancouver</a></li>-->
+      <!--<li><a href="#calgary">Calgary</a></li>-->
+      <li><a href="#toronto">Toronto</a></li>
+      <!--<li><a href="#ottawa">Ottawa</a></li>-->
+      <li><a href="#montreal">Montreal</a></li>
+      <li><a href="#halifax">Halifax</a></li>
+    </ul>
+    <form id="origin-destination">
+      <div class="origin">
+        <input type="submit" value="Set origin" />
+      </div>
+      <div class="destination">
+        <input type="submit" value="Set destination" />
+      </div>
+    </form>
+    <div id="map"></div>
+    <div id="chart"></div>
+    <div id="data"></div>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.7&sensor=true&key=AIzaSyDWrbWJ46ET44B2Z0UFdqsT3DbsZXKXuqU"></script>
+    <script type="text/javascript" src="jquery-1.7.1.min.js"></script>
+    <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="excanvas.min.js"></script><![endif]-->
+    <script language="javascript" type="text/javascript" src="jquery.jqplot.min.js"></script>
+    <script type="text/javascript" src="app.js"></script>
+    <script type="text/javascript">
+      var toronto = new google.maps.LatLng(43.6541, -79.3828);
+      var mapDiv = document.getElementById('map');
+      var mapOptions = {
+        center: toronto,
+        zoom: 12,
+        mapTypeId: 'roadmap'
+      };
+      var map = new google.maps.Map(mapDiv, mapOptions);
+
+      var dataDiv = document.getElementById('data');
+      var chartDiv = document.getElementById('chart');
+      var manager = new Manager(map, undefined, undefined, 'toronto', dataDiv, chartDiv);
+
+      var $origin = $('form#origin-destination div.origin input');
+      var $destination = $('form#origin-destination div.destination input');
+      var origin = undefined;
+      var destination = undefined;
+      var setting = 'origin';
+
+      var setOriginOrDestination = function(latLng) {
+        if (setting == 'origin') {
+          origin = latLng;
+          manager.setOrigin(latLng);
+        } else {
+          destination = latLng;
+          manager.setDestination(latLng);
+        }
+
+        toggleOriginDestination();
+
+        if (origin && destination) {
+          manager.queryAndUpdateDirections(function(results) {
+            manager.queryAndUpdatePolylineRelatedLayer(results);
+          });
+        }
+      };
+
+      var refreshOriginDestination = function() {
+        $origin.attr('disabled', false);
+        $destination.attr('disabled', false);
+
+        if (setting == 'origin') {
+          $origin.val('Click on map to set origin');
+          $origin.attr('disabled', true);
+          $destination.val('Set destination');
+        } else {
+          $origin.val('Set origin');
+          $destination.val('Click on map to set destination');
+          $destination.attr('disabled', true);
+        }
+      };
+
+      var toggleOriginDestination = function() {
+        if (setting == 'origin') {
+          setting = 'destination';
+        } else {
+          setting = 'origin';
+        }
+        refreshOriginDestination();
+      };
+
+      $('#city a').click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $a = $(e.target);
+        $li = $a.parent();
+        $ul = $li.parent();
+        $ul.find('li').removeClass('selected');
+        $li.addClass('selected');
+        manager.setCity($a.attr('href').split(/\#/)[1])
+      });
+
+      $origin.click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setting = 'origin';
+        refreshOriginDestination();
+      });
+
+      $destination.click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        setting = 'destination';
+        refreshOriginDestination();
+      });
+
+      google.maps.event.addListener(map, 'click', function(e) {
+        setOriginOrDestination(e.latLng)
+      });
+
+      refreshOriginDestination();
+    </script>
+  </body>
+</html>
