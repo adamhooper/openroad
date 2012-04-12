@@ -65,7 +65,7 @@
     <ul id="city">
       <!--<li><a href="#vancouver">Vancouver</a></li>-->
       <!--<li><a href="#calgary">Calgary</a></li>-->
-      <li><a href="#toronto">Toronto</a></li>
+      <li class="selected"><a href="#toronto">Toronto</a></li>
       <!--<li><a href="#ottawa">Ottawa</a></li>-->
       <li><a href="#montreal">Montreal</a></li>
       <li><a href="#halifax">Halifax</a></li>
@@ -87,18 +87,20 @@
     <script language="javascript" type="text/javascript" src="jquery.jqplot.min.js"></script>
     <script type="text/javascript" src="app.js"></script>
     <script type="text/javascript">
-      var toronto = new google.maps.LatLng(43.6541, -79.3828);
       var mapDiv = document.getElementById('map');
-      var mapOptions = {
-        center: toronto,
-        zoom: 12,
-        mapTypeId: 'roadmap'
-      };
-      var map = new google.maps.Map(mapDiv, mapOptions);
+      var map = new google.maps.Map(mapDiv, {
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        center: new google.maps.LatLng(0, 0),
+        zoom: 1
+      });
 
       var dataDiv = document.getElementById('data');
       var chartDiv = document.getElementById('chart');
       var manager = new Manager(map, undefined, undefined, 'toronto', dataDiv, chartDiv);
+      manager.setCity('toronto');
+
+      var bikeLayer = new google.maps.BicyclingLayer();
+      bikeLayer.setMap(map);
 
       var $origin = $('form#origin-destination div.origin input');
       var $destination = $('form#origin-destination div.destination input');

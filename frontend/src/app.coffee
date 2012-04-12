@@ -1,9 +1,30 @@
 URL = 'http://localhost:8000/%{city}'
 
 CITIES = {
-  'toronto': new google.maps.LatLng(43.6541, -79.3828),
-  'montreal': new google.maps.LatLng(45.5081, -73.5550),
-  'halifax': new google.maps.LatLng(44.6500, -63.6000),
+  'vancouver': new google.maps.LatLngBounds(
+    new google.maps.LatLng(49.131859, -123.264954),
+    new google.maps.LatLng(49.352188, -122.985718)
+  ),
+  'calgary': new google.maps.LatLngBounds(
+    new google.maps.LatLng(50.842941, -114.613968),
+    new google.maps.LatLng(51.343868, -113.901817)
+  ),
+  'toronto': new google.maps.LatLngBounds(
+    new google.maps.LatLng(43.584740, -79.639297),
+    new google.maps.LatLng(43.855419, -79.115623)
+  ),
+  'ottawa': new google.maps.LatLngBounds(
+    new google.maps.LatLng(44.962002, -76.355766),
+    new google.maps.LatLng(45.536541, -75.246033)
+  ),
+  'montreal': new google.maps.LatLngBounds(
+    new google.maps.LatLng(45.413479, -73.976608),
+    new google.maps.LatLng(45.704788, -73.476418)
+  ),
+  'halifax': new google.maps.LatLngBounds(
+    new google.maps.LatLng(44.434570, -64.237190),
+    new google.maps.LatLng(45.276489, -62.160469)
+  ),
 }
 
 selectText = (element) ->
@@ -35,9 +56,8 @@ class Manager
     this.setCity(@city)
 
   setCity: (@city) ->
-    latLng = CITIES[@city]
-    @map.setCenter(latLng)
-    @map.setZoom(12)
+    bounds = CITIES[@city]
+    @map.fitBounds(bounds)
 
   setOrigin: (@origin) ->
 
