@@ -1,5 +1,5 @@
 (function() {
-  var CITIES, ChartSeriesMaker, Manager, URL, selectText;
+  var AccidentsTableRenderer, CITIES, ChartSeriesMaker, Manager, URL, selectText;
 
   URL = 'http://localhost:8000/%{city}';
 
@@ -52,6 +52,90 @@
     };
 
     return ChartSeriesMaker;
+
+  })();
+
+  AccidentsTableRenderer = (function() {
+
+    function AccidentsTableRenderer(div) {
+      this.div = div;
+    }
+
+    AccidentsTableRenderer.prototype.render = function(accidents) {
+      var $table, $tbody, $tds, $th, $theadTr, $tr, accident, heading, headings, i, key, keys, textNode, trClass, value, _i, _len, _len2, _len3, _ref;
+      if (!(accidents.length > 0)) return;
+      $table = $('<table><thead><tr><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>');
+      headings = [];
+      _ref = accidents[0];
+      for (heading in _ref) {
+        value = _ref[heading];
+        if (heading === 'id') continue;
+        if (heading === 'distance_along_path') continue;
+        if (heading === 'Time') continue;
+        if (heading === 'Latitude') continue;
+        if (heading === 'Longitude') continue;
+        headings.push(heading);
+      }
+      headings.sort();
+      headings.unshift('Time');
+      keys = (function() {
+        var _i, _len, _results;
+        _results = [];
+        for (_i = 0, _len = headings.length; _i < _len; _i++) {
+          heading = headings[_i];
+          _results.push(heading.toLowerCase().replace(/\s/g, '-'));
+        }
+        return _results;
+      })();
+      keys.unshift('distance_along_path');
+      $theadTr = $table.find('thead').children();
+      for (i = 0, _len = headings.length; i < _len; i++) {
+        heading = headings[i];
+        $th = $('<th></th>');
+        $th.attr('class', keys[i + 1]);
+        $th.text(heading);
+        $theadTr.append($th);
+      }
+      $tbody = $table.find('tbody');
+      trClass = 'odd';
+      for (_i = 0, _len2 = accidents.length; _i < _len2; _i++) {
+        accident = accidents[_i];
+        $tr = $('<tr>' + [
+          (function() {
+            var _j, _len3, _results;
+            _results = [];
+            for (_j = 0, _len3 = keys.length; _j < _len3; _j++) {
+              key = keys[_j];
+              _results.push('<td></td>');
+            }
+            return _results;
+          })()
+        ].join('') + '</tr>');
+        $tr.attr('class', trClass);
+        $tr.attr('id', "accident-" + accident.id);
+        $tds = $tr.children();
+        if (trClass === 'odd') {
+          trClass = 'even';
+        } else {
+          trClass = 'odd';
+        }
+        accident.distance_along_path = "" + accident.distance_along_path + "m";
+        for (i = 0, _len3 = keys.length; i < _len3; i++) {
+          key = keys[i];
+          heading = headings[i - 1];
+          $tds[i].className = key;
+          textNode = document.createTextNode(accident[heading] || accident[key] || '');
+          $tds[i].appendChild(textNode);
+        }
+        $tbody.append($tr);
+      }
+      $table.on('dblclick', function(e) {
+        return selectText($dataDiv[0]);
+      });
+      return $(this.div).append($table);
+    };
+
+    return AccidentsTableRenderer;
 
   })();
 
@@ -160,11 +244,13 @@
         data: postData,
         dataType: 'json',
         success: function(data) {
-          var $chartInner, $table, $tbody, $tds, $th, $theadTr, $tr, accident, heading, headings, i, key, keys, latLng, latitude, longitude, maxYear, minYear, plotSeries, rowNumber, seriesMaker, textNode, trClass, value, _j, _len2, _len3, _len4, _len5, _ref2;
+          var $chartInner, accident, latLng, latitude, longitude, maxYear, minYear, plotSeries, rowNumber, seriesMaker, tableRenderer, _j, _len2, _len3;
           minYear = void 0;
           maxYear = void 0;
           $dataDiv.empty();
           $chartDiv.empty();
+          tableRenderer = new AccidentsTableRenderer($dataDiv[0]);
+          tableRenderer.render(data);
           for (_j = 0, _len2 = data.length; _j < _len2; _j++) {
             accident = data[_j];
             if (!(minYear != null) || minYear > accident.year) {
@@ -176,70 +262,8 @@
           }
           seriesMaker = new ChartSeriesMaker();
           if (!data || !data.length) return;
-          $table = $('<table><thead><tr><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>');
-          headings = [];
-          _ref2 = data[0];
-          for (heading in _ref2) {
-            value = _ref2[heading];
-            if (heading === 'id') continue;
-            if (heading === 'distance_along_path') continue;
-            if (heading === 'Time') continue;
-            if (heading === 'Latitude') continue;
-            if (heading === 'Longitude') continue;
-            headings.push(heading);
-          }
-          headings.sort();
-          headings.unshift('Time');
-          keys = (function() {
-            var _k, _len3, _results;
-            _results = [];
-            for (_k = 0, _len3 = headings.length; _k < _len3; _k++) {
-              heading = headings[_k];
-              _results.push(heading.toLowerCase().replace(/\s/g, '-'));
-            }
-            return _results;
-          })();
-          keys.unshift('distance_along_path');
-          $theadTr = $table.find('thead').children();
-          for (i = 0, _len3 = headings.length; i < _len3; i++) {
-            heading = headings[i];
-            $th = $('<th></th>');
-            $th.attr('class', keys[i + 1]);
-            $th.text(heading);
-            $theadTr.append($th);
-          }
-          $tbody = $table.find('tbody');
-          trClass = 'odd';
-          for (rowNumber = 0, _len4 = data.length; rowNumber < _len4; rowNumber++) {
+          for (rowNumber = 0, _len3 = data.length; rowNumber < _len3; rowNumber++) {
             accident = data[rowNumber];
-            $tr = $('<tr>' + [
-              (function() {
-                var _k, _len5, _results;
-                _results = [];
-                for (_k = 0, _len5 = keys.length; _k < _len5; _k++) {
-                  key = keys[_k];
-                  _results.push('<td></td>');
-                }
-                return _results;
-              })()
-            ].join('') + '</tr>');
-            $tr.attr('class', trClass);
-            $tr.attr('id', "accident-" + accident.id);
-            $tds = $tr.children();
-            if (trClass === 'odd') {
-              trClass = 'even';
-            } else {
-              trClass = 'odd';
-            }
-            accident.distance_along_path = "" + accident.distance_along_path + "m";
-            for (i = 0, _len5 = keys.length; i < _len5; i++) {
-              key = keys[i];
-              heading = headings[i - 1];
-              $tds[i].className = key;
-              textNode = document.createTextNode(accident[heading] || accident[key] || '');
-              $tds[i].appendChild(textNode);
-            }
-            $tbody.append($tr);
             latitude = accident.Latitude;
             longitude = accident.Longitude;
             latLng = new google.maps.LatLng(latitude, longitude);
@@ -250,10 +274,6 @@
             marker.setMap(_this.map);
             seriesMaker.add(accident.Time.split('-')[0]);
           }
-          $dataDiv.append($table);
-          $table.on('dblclick', function(e) {
-            return selectText($dataDiv[0]);
-          });
           plotSeries = seriesMaker.getSeries();
           $chartInner = $('<div></div>');
           $chartInner.attr('id', _this.chartDiv.id + '-chartInner');

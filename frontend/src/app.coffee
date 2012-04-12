@@ -51,6 +51,66 @@ class ChartSeriesMaker
   getSeries: () ->
     ([ +k, v ] for k, v of @data)
 
+class AccidentsTableRenderer
+  constructor: (@div) ->
+
+  render: (accidents) ->
+    return unless accidents.length > 0
+
+    $table = $('<table><thead><tr><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>')
+
+    headings = []
+
+    for heading, value of accidents[0]
+      continue if heading == 'id'
+      continue if heading == 'distance_along_path'
+      continue if heading == 'Time'
+
+      # We can't give Google-provided geocoded data
+      # TODO: make exception for Toronto?
+      continue if heading == 'Latitude'
+      continue if heading == 'Longitude'
+      headings.push(heading)
+
+    headings.sort()
+    headings.unshift('Time')
+
+    keys = ( heading.toLowerCase().replace(/\s/g, '-') for heading in headings )
+    keys.unshift('distance_along_path')
+
+    $theadTr = $table.find('thead').children()
+    for heading, i in headings
+      $th = $('<th></th>')
+      $th.attr('class', keys[i+1])
+      $th.text(heading)
+      $theadTr.append($th)
+
+    $tbody = $table.find('tbody')
+    trClass = 'odd'
+
+    for accident in accidents
+      $tr = $('<tr>' + ['<td></td>' for key in keys].join('') + '</tr>')
+      $tr.attr('class', trClass)
+      $tr.attr('id', "accident-#{accident.id}")
+      $tds = $tr.children()
+
+      if trClass == 'odd' then trClass = 'even' else trClass = 'odd'
+
+      accident.distance_along_path = "#{accident.distance_along_path}m"
+
+      for key, i in keys
+        heading = headings[i-1]
+        $tds[i].className = key
+        textNode = document.createTextNode(accident[heading] || accident[key] || '')
+        $tds[i].appendChild(textNode)
+
+      $tbody.append($tr)
+
+    $table.on 'dblclick', (e) ->
+      selectText($dataDiv[0])
+
+    $(@div).append($table)
+
 class Manager
   constructor: (@map, @origin, @destination, @city, @dataDiv, @chartDiv) ->
     this.setCity(@city)
@@ -130,6 +190,9 @@ class Manager
       $dataDiv.empty()
       $chartDiv.empty()
 
+      tableRenderer = new AccidentsTableRenderer($dataDiv[0])
+      tableRenderer.render(data)
+
       for accident in data
         minYear = accident.year if !minYear? || minYear > accident.year
         maxYear = accident.year if !maxYear? || maxYear < accident.year
@@ -138,55 +201,7 @@ class Manager
 
       return if !data || !data.length
 
-      $table = $('<table><thead><tr><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>')
-
-      headings = []
-
-      for heading, value of data[0]
-        continue if heading == 'id'
-        continue if heading == 'distance_along_path'
-        continue if heading == 'Time'
-
-        # We can't give Google-provided geocoded data
-        # TODO: make exception for Toronto?
-        continue if heading == 'Latitude'
-        continue if heading == 'Longitude'
-        headings.push(heading)
-
-      headings.sort()
-      headings.unshift('Time')
-
-      keys = ( heading.toLowerCase().replace(/\s/g, '-') for heading in headings )
-      keys.unshift('distance_along_path')
-
-      $theadTr = $table.find('thead').children()
-      for heading, i in headings
-        $th = $('<th></th>')
-        $th.attr('class', keys[i+1])
-        $th.text(heading)
-        $theadTr.append($th)
-
-      $tbody = $table.find('tbody')
-      trClass = 'odd'
-
       for accident, rowNumber in data
-        $tr = $('<tr>' + ['<td></td>' for key in keys].join('') + '</tr>')
-        $tr.attr('class', trClass)
-        $tr.attr('id', "accident-#{accident.id}")
-        $tds = $tr.children()
-
-        if trClass == 'odd' then trClass = 'even' else trClass = 'odd'
-
-        accident.distance_along_path = "#{accident.distance_along_path}m"
-
-        for key, i in keys
-          heading = headings[i-1]
-          $tds[i].className = key
-          textNode = document.createTextNode(accident[heading] || accident[key] || '')
-          $tds[i].appendChild(textNode)
-
-        $tbody.append($tr)
-
         latitude = accident.Latitude
         longitude = accident.Longitude
         latLng = new google.maps.LatLng(latitude, longitude)
@@ -195,11 +210,6 @@ class Manager
         marker.setMap(@map)
 
         seriesMaker.add(accident.Time.split('-')[0])
-
-      $dataDiv.append($table)
-
-      $table.on 'dblclick', (e) ->
-        selectText($dataDiv[0])
 
       plotSeries = seriesMaker.getSeries()
       $chartInner = $('<div></div>')
