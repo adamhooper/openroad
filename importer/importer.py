@@ -8,6 +8,13 @@ STATUS_FILENAME = os.path.dirname(__file__) + '/geocoder-status.txt'
 DSN='dbname=bikefile user=bikefile password=bikefile host=localhost'
 
 DB_SCHEMAS = {
+    'vancouver': (
+        ('Time', 'TIMESTAMP', 'NOT NULL'),
+        ('Address', 'VARCHAR', 'NOT NULL'),
+        ('Fatal', 'BOOLEAN', 'NOT NULL')
+    ),
+    'calgary': (
+    ),
     'toronto': (
         ('Time', 'TIMESTAMP', 'NOT NULL'),
         ('Address', 'VARCHAR', 'NOT NULL'),
@@ -22,6 +29,8 @@ DB_SCHEMAS = {
         ('Driver condition', 'VARCHAR'),
         ('Latitude', 'FLOAT'),
         ('Longitude', 'FLOAT')
+    ),
+    'ottawa': (
     ),
     'montreal': (
         ('Time', 'TIMESTAMP', 'NOT NULL'),
@@ -41,10 +50,6 @@ DB_SCHEMAS = {
         ('Address', 'VARCHAR', 'NOT NULL'),
         ('Latitude', 'FLOAT'),
         ('Longitude', 'FLOAT')
-    ),
-    'vancouver': (
-    ),
-    'calgary': (
     )
 }
 
