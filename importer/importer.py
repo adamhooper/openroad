@@ -11,7 +11,9 @@ DB_SCHEMAS = {
     'vancouver': (
         ('Time', 'TIMESTAMP', 'NOT NULL'),
         ('Address', 'VARCHAR', 'NOT NULL'),
-        ('Fatal', 'BOOLEAN', 'NOT NULL')
+        ('Fatal', 'BOOLEAN', 'NOT NULL'),
+        ('Latitude', 'FLOAT'),
+        ('Longitude', 'FLOAT')
     ),
     'calgary': (
     ),
