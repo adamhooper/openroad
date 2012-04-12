@@ -111,6 +111,29 @@ class AccidentsTableRenderer
 
     $(@div).append($table)
 
+class TrendChartRenderer
+  constructor: (@div) ->
+
+  render: (accidents) ->
+    return unless accidents.length > 0
+
+    seriesMaker = new ChartSeriesMaker()
+
+    for accident in accidents
+      seriesMaker.add(accident.Time.split('-')[0])
+
+    plotSeries = seriesMaker.getSeries()
+    innerId = "#{@div.id}-chartInner"
+
+    $(@div).append("<div id=\"#{innerId}\"></div>")
+
+    $.jqplot(innerId, [plotSeries], {
+      highlighter: { show: true, sizeAdjust: 8 },
+      cursor: { show: false },
+      xaxis: {},
+      yaxis: { min: 0 },
+    })
+
 class Manager
   constructor: (@map, @origin, @destination, @city, @dataDiv, @chartDiv) ->
     this.setCity(@city)
@@ -184,44 +207,24 @@ class Manager
     url = URL.replace(/%\{city\}/, @city)
 
     $.ajax({ url: url, type: 'POST', data: postData, dataType: 'json', success: (data) =>
-      minYear = undefined
-      maxYear = undefined
-
       $dataDiv.empty()
       $chartDiv.empty()
 
       tableRenderer = new AccidentsTableRenderer($dataDiv[0])
       tableRenderer.render(data)
 
-      for accident in data
-        minYear = accident.year if !minYear? || minYear > accident.year
-        maxYear = accident.year if !maxYear? || maxYear < accident.year
-
-      seriesMaker = new ChartSeriesMaker()
+      chartRenderer = new TrendChartRenderer($chartDiv[0])
+      chartRenderer.render(data)
 
       return if !data || !data.length
 
-      for accident, rowNumber in data
+      for accident in data
         latitude = accident.Latitude
         longitude = accident.Longitude
         latLng = new google.maps.LatLng(latitude, longitude)
         marker = new google.maps.Marker(position: latLng)
         @markers.push(marker)
         marker.setMap(@map)
-
-        seriesMaker.add(accident.Time.split('-')[0])
-
-      plotSeries = seriesMaker.getSeries()
-      $chartInner = $('<div></div>')
-      $chartInner.attr('id', @chartDiv.id + '-chartInner')
-      $chartDiv.append($chartInner)
-
-      $.jqplot($chartInner[0].id, [plotSeries], {
-        highlighter: { show: true, sizeAdjust: 8 },
-        cursor: { show: false },
-        xaxis: {},
-        yaxis: { min: 0 },
-      })
     })
 
 window.Manager = Manager

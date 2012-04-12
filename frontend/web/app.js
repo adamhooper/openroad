@@ -1,5 +1,5 @@
 (function() {
-  var AccidentsTableRenderer, CITIES, ChartSeriesMaker, Manager, URL, selectText;
+  var AccidentsTableRenderer, CITIES, ChartSeriesMaker, Manager, TrendChartRenderer, URL, selectText;
 
   URL = 'http://localhost:8000/%{city}';
 
@@ -139,6 +139,42 @@
 
   })();
 
+  TrendChartRenderer = (function() {
+
+    function TrendChartRenderer(div) {
+      this.div = div;
+    }
+
+    TrendChartRenderer.prototype.render = function(accidents) {
+      var accident, innerId, plotSeries, seriesMaker, _i, _len;
+      if (!(accidents.length > 0)) return;
+      seriesMaker = new ChartSeriesMaker();
+      for (_i = 0, _len = accidents.length; _i < _len; _i++) {
+        accident = accidents[_i];
+        seriesMaker.add(accident.Time.split('-')[0]);
+      }
+      plotSeries = seriesMaker.getSeries();
+      innerId = "" + this.div.id + "-chartInner";
+      $(this.div).append("<div id=\"" + innerId + "\"></div>");
+      return $.jqplot(innerId, [plotSeries], {
+        highlighter: {
+          show: true,
+          sizeAdjust: 8
+        },
+        cursor: {
+          show: false
+        },
+        xaxis: {},
+        yaxis: {
+          min: 0
+        }
+      });
+    };
+
+    return TrendChartRenderer;
+
+  })();
+
   Manager = (function() {
 
     function Manager(map, origin, destination, city, dataDiv, chartDiv) {
@@ -244,26 +280,17 @@
         data: postData,
         dataType: 'json',
         success: function(data) {
-          var $chartInner, accident, latLng, latitude, longitude, maxYear, minYear, plotSeries, rowNumber, seriesMaker, tableRenderer, _j, _len2, _len3;
-          minYear = void 0;
-          maxYear = void 0;
+          var accident, chartRenderer, latLng, latitude, longitude, tableRenderer, _j, _len2, _results;
           $dataDiv.empty();
           $chartDiv.empty();
           tableRenderer = new AccidentsTableRenderer($dataDiv[0]);
           tableRenderer.render(data);
+          chartRenderer = new TrendChartRenderer($chartDiv[0]);
+          chartRenderer.render(data);
+          if (!data || !data.length) return;
+          _results = [];
           for (_j = 0, _len2 = data.length; _j < _len2; _j++) {
             accident = data[_j];
-            if (!(minYear != null) || minYear > accident.year) {
-              minYear = accident.year;
-            }
-            if (!(maxYear != null) || maxYear < accident.year) {
-              maxYear = accident.year;
-            }
-          }
-          seriesMaker = new ChartSeriesMaker();
-          if (!data || !data.length) return;
-          for (rowNumber = 0, _len3 = data.length; rowNumber < _len3; rowNumber++) {
-            accident = data[rowNumber];
             latitude = accident.Latitude;
             longitude = accident.Longitude;
             latLng = new google.maps.LatLng(latitude, longitude);
@@ -271,26 +298,9 @@
               position: latLng
             });
             _this.markers.push(marker);
-            marker.setMap(_this.map);
-            seriesMaker.add(accident.Time.split('-')[0]);
+            _results.push(marker.setMap(_this.map));
           }
-          plotSeries = seriesMaker.getSeries();
-          $chartInner = $('<div></div>');
-          $chartInner.attr('id', _this.chartDiv.id + '-chartInner');
-          $chartDiv.append($chartInner);
-          return $.jqplot($chartInner[0].id, [plotSeries], {
-            highlighter: {
-              show: true,
-              sizeAdjust: 8
-            },
-            cursor: {
-              show: false
-            },
-            xaxis: {},
-            yaxis: {
-              min: 0
-            }
-          });
+          return _results;
         }
       });
     };
