@@ -189,42 +189,47 @@ class Manager
         callback(result)
 
   queryAndUpdatePolylineRelatedLayer: (googleDirectionsResult) ->
+    if @lastRequest?
+      @lastRequest.cancel()
+      @lastRequest = undefined
+
+    this.clearOldData()
+
     encoded_polyline = googleDirectionsResult.routes[0].overview_polyline.points
-
-    if @markers?
-      for marker in @markers
-        marker.setMap(null)
-    @markers = []
-
-    $dataDiv = $(@dataDiv || [])
-    $chartDiv = $(@chartDiv || [])
-
-    $dataDiv.empty()
-    $chartDiv.empty()
-
     postData = { encoded_polyline: encoded_polyline }
 
     url = URL.replace(/%\{city\}/, @city)
 
-    $.ajax({ url: url, type: 'POST', data: postData, dataType: 'json', success: (data) =>
-      $dataDiv.empty()
-      $chartDiv.empty()
+    @lastRequest = $.ajax({ url: url, type: 'POST', data: postData, dataType: 'json', success: (data) =>
+      @lastRequest = undefined
 
-      tableRenderer = new AccidentsTableRenderer($dataDiv[0])
-      tableRenderer.render(data)
-
-      chartRenderer = new TrendChartRenderer($chartDiv[0])
-      chartRenderer.render(data)
-
-      return if !data || !data.length
-
-      for accident in data
-        latitude = accident.Latitude
-        longitude = accident.Longitude
-        latLng = new google.maps.LatLng(latitude, longitude)
-        marker = new google.maps.Marker(position: latLng)
-        @markers.push(marker)
-        marker.setMap(@map)
+      this.clearOldData() # just in case?
+      this.handleNewData(data)
     })
+
+  clearOldData: () ->
+    if @markers?
+      for marker in @markers
+        marker.setMap(null)
+    @markers = undefined
+
+    $(@dataDiv || []).empty()
+    $(@chartDiv || []).empty()
+
+  handleNewData: (data) ->
+    tableRenderer = new AccidentsTableRenderer(@dataDiv)
+    tableRenderer.render(data)
+
+    chartRenderer = new TrendChartRenderer(@chartDiv)
+    chartRenderer.render(data)
+
+    @markers = []
+    for accident in data
+      latitude = accident.Latitude
+      longitude = accident.Longitude
+      latLng = new google.maps.LatLng(latitude, longitude)
+      marker = new google.maps.Marker(position: latLng)
+      @markers.push(marker)
+      marker.setMap(@map)
 
 window.Manager = Manager

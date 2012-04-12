@@ -255,9 +255,33 @@
     };
 
     Manager.prototype.queryAndUpdatePolylineRelatedLayer = function(googleDirectionsResult) {
-      var $chartDiv, $dataDiv, encoded_polyline, marker, postData, url, _i, _len, _ref,
+      var encoded_polyline, postData, url,
         _this = this;
+      if (this.lastRequest != null) {
+        this.lastRequest.cancel();
+        this.lastRequest = void 0;
+      }
+      this.clearOldData();
       encoded_polyline = googleDirectionsResult.routes[0].overview_polyline.points;
+      postData = {
+        encoded_polyline: encoded_polyline
+      };
+      url = URL.replace(/%\{city\}/, this.city);
+      return this.lastRequest = $.ajax({
+        url: url,
+        type: 'POST',
+        data: postData,
+        dataType: 'json',
+        success: function(data) {
+          _this.lastRequest = void 0;
+          _this.clearOldData();
+          return _this.handleNewData(data);
+        }
+      });
+    };
+
+    Manager.prototype.clearOldData = function() {
+      var marker, _i, _len, _ref;
       if (this.markers != null) {
         _ref = this.markers;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -265,44 +289,31 @@
           marker.setMap(null);
         }
       }
+      this.markers = void 0;
+      $(this.dataDiv || []).empty();
+      return $(this.chartDiv || []).empty();
+    };
+
+    Manager.prototype.handleNewData = function(data) {
+      var accident, chartRenderer, latLng, latitude, longitude, marker, tableRenderer, _i, _len, _results;
+      tableRenderer = new AccidentsTableRenderer(this.dataDiv);
+      tableRenderer.render(data);
+      chartRenderer = new TrendChartRenderer(this.chartDiv);
+      chartRenderer.render(data);
       this.markers = [];
-      $dataDiv = $(this.dataDiv || []);
-      $chartDiv = $(this.chartDiv || []);
-      $dataDiv.empty();
-      $chartDiv.empty();
-      postData = {
-        encoded_polyline: encoded_polyline
-      };
-      url = URL.replace(/%\{city\}/, this.city);
-      return $.ajax({
-        url: url,
-        type: 'POST',
-        data: postData,
-        dataType: 'json',
-        success: function(data) {
-          var accident, chartRenderer, latLng, latitude, longitude, tableRenderer, _j, _len2, _results;
-          $dataDiv.empty();
-          $chartDiv.empty();
-          tableRenderer = new AccidentsTableRenderer($dataDiv[0]);
-          tableRenderer.render(data);
-          chartRenderer = new TrendChartRenderer($chartDiv[0]);
-          chartRenderer.render(data);
-          if (!data || !data.length) return;
-          _results = [];
-          for (_j = 0, _len2 = data.length; _j < _len2; _j++) {
-            accident = data[_j];
-            latitude = accident.Latitude;
-            longitude = accident.Longitude;
-            latLng = new google.maps.LatLng(latitude, longitude);
-            marker = new google.maps.Marker({
-              position: latLng
-            });
-            _this.markers.push(marker);
-            _results.push(marker.setMap(_this.map));
-          }
-          return _results;
-        }
-      });
+      _results = [];
+      for (_i = 0, _len = data.length; _i < _len; _i++) {
+        accident = data[_i];
+        latitude = accident.Latitude;
+        longitude = accident.Longitude;
+        latLng = new google.maps.LatLng(latitude, longitude);
+        marker = new google.maps.Marker({
+          position: latLng
+        });
+        this.markers.push(marker);
+        _results.push(marker.setMap(this.map));
+      }
+      return _results;
     };
 
     return Manager;
