@@ -130,8 +130,10 @@ class TrendChartRenderer
     $.jqplot(innerId, [plotSeries], {
       highlighter: { show: true, sizeAdjust: 8 },
       cursor: { show: false },
-      xaxis: {},
-      yaxis: { min: 0 },
+      axes: {
+        xaxis: { max: 2012, tickInterval: 1 },
+        yaxis: { min: 0, tickInterval: 2 },
+      },
     })
 
 class Manager
