@@ -72,3 +72,11 @@ toronto.csv: Toronto bicycle accidents.
     - removed many columns
     - removed rows with malformed dates and integers
     - set time-of-day on rows with malformed times to 00:00
+
+vancouver.csv: Vancouver bicycle accidents.
+  Years: 2006 to 2010
+  Source: Vancouver Police Department
+  License: Public domain
+  Edits:
+    - merged deaths and accidents into single spreadsheet with "fatal" column
+    - changed Jul 26 to Jul 28 for 2006 accident at Clark/Grandview
