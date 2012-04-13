@@ -10,9 +10,6 @@ DSN = 'dbname=bikefile user=bikefile password=bikefile host=localhost'
 import psycopg2
 from psycopg2.extras import RealDictCursor as _RealDictCursor
 
-db = psycopg2.connect(DSN)
-c = db.cursor(cursor_factory=_RealDictCursor)
-
 def _decode_line(encoded):
     """Decodes a polyline that was encoded using the Google Maps method.
 
@@ -90,7 +87,7 @@ def application(env, start_response):
 
     polyline = _decode_line(encoded_polyline)
 
-    if polyline is None:
+    if polyline is None or len(polyline) == 0:
         start_response('404 Not Found', [
             ('Content-Type', 'text/plain; charset=UTF-8')
         ])
@@ -105,8 +102,12 @@ def application(env, start_response):
         FROM %s
         INNER JOIN (SELECT %s AS path) path ON 1=1
         WHERE ST_DWithin("Location", path.path::geography, 20)
+          AND "Time" > '2001-01-01 00:00:00'
         ORDER BY distance_along_path
         ''' % (city, polyline_as_sql)
+
+    db = psycopg2.connect(DSN)
+    c = db.cursor(cursor_factory=_RealDictCursor)
     c.execute(q)
 
     response_data = c.fetchall()
