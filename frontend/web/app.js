@@ -1,5 +1,5 @@
 (function() {
-  var AccidentsTableRenderer, CITIES, ChartSeriesMaker, Manager, TrendChartRenderer, URL, selectText;
+  var AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, ChartSeriesMaker, Manager, TrendChartRenderer, URL, selectText;
 
   URL = 'http://localhost:8000/%{city}';
 
@@ -59,16 +59,41 @@
 
     function AccidentsTableRenderer(div) {
       this.div = div;
+      this.accidents = {};
     }
 
-    AccidentsTableRenderer.prototype.render = function(accidents) {
-      var $table, $tbody, $tds, $th, $theadTr, $tr, accident, heading, headings, i, key, keys, textNode, trClass, value, _i, _len, _len2, _len3, _ref;
+    AccidentsTableRenderer.prototype.clearAccidents = function(mode) {
+      if (mode == null) mode = void 0;
+      if (!(mode != null)) {
+        return this.accidents = {};
+      } else {
+        return delete this.accidents[mode];
+      }
+    };
+
+    AccidentsTableRenderer.prototype.addAccidents = function(mode, accidents) {
+      var accident, _i, _len;
+      for (_i = 0, _len = accidents.length; _i < _len; _i++) {
+        accident = accidents[_i];
+        accident.distance_along_path = "" + accident.distance_along_path + "m (" + mode + ")";
+      }
+      return this.accidents[mode] = accidents;
+    };
+
+    AccidentsTableRenderer.prototype.render = function() {
+      var $table, $tbody, $tds, $th, $theadTr, $tr, accident, accidents, heading, headings, i, key, keys, mode, modeAccidents, textNode, trClass, value, _i, _len, _len2, _len3, _ref, _ref2;
+      accidents = [];
+      _ref = this.accidents;
+      for (mode in _ref) {
+        modeAccidents = _ref[mode];
+        accidents = accidents.concat(modeAccidents);
+      }
       if (!(accidents.length > 0)) return;
       $table = $('<table><thead><tr><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>');
       headings = [];
-      _ref = accidents[0];
-      for (heading in _ref) {
-        value = _ref[heading];
+      _ref2 = accidents[0];
+      for (heading in _ref2) {
+        value = _ref2[heading];
         if (heading === 'id') continue;
         if (heading === 'distance_along_path') continue;
         if (heading === 'Time') continue;
@@ -119,7 +144,6 @@
         } else {
           trClass = 'odd';
         }
-        accident.distance_along_path = "" + accident.distance_along_path + "m";
         for (i = 0, _len3 = keys.length; i < _len3; i++) {
           key = keys[i];
           heading = headings[i - 1];
@@ -132,6 +156,7 @@
       $table.on('dblclick', function(e) {
         return selectText($dataDiv[0]);
       });
+      $(this.div).empty();
       return $(this.div).append($table);
     };
 
@@ -145,18 +170,50 @@
       this.div = div;
     }
 
-    TrendChartRenderer.prototype.render = function(accidents) {
-      var accident, innerId, plotSeries, seriesMaker, _i, _len;
-      if (!(accidents.length > 0)) return;
+    TrendChartRenderer.prototype.clearAccidents = function(mode) {
+      if (mode == null) mode = void 0;
+      if (!(mode != null)) {
+        return this.series = {};
+      } else {
+        return delete this.series[mode];
+      }
+    };
+
+    TrendChartRenderer.prototype.addAccidents = function(mode, accidents) {
+      var accident, seriesMaker, _i, _len;
+      if (accidents.length === 0) {
+        delete this.series[mode];
+        return;
+      }
       seriesMaker = new ChartSeriesMaker();
       for (_i = 0, _len = accidents.length; _i < _len; _i++) {
         accident = accidents[_i];
         seriesMaker.add(accident.Time.split('-')[0]);
       }
-      plotSeries = seriesMaker.getSeries();
+      return this.series[mode] = seriesMaker.getSeries();
+    };
+
+    TrendChartRenderer.prototype.render = function() {
+      var color, innerId, mode, plotSeries, plotSeriesOptions, series, _ref;
+      plotSeries = [];
+      plotSeriesOptions = [];
+      _ref = this.series;
+      for (mode in _ref) {
+        series = _ref[mode];
+        color = {
+          bicycling: 'blue',
+          driving: 'yellow'
+        }[mode];
+        plotSeries.push(series);
+        plotSeriesOptions.push({
+          color: color
+        });
+      }
+      if (!(plotSeries.length > 0)) return;
       innerId = "" + this.div.id + "-chartInner";
+      $(this.div).empty();
       $(this.div).append("<div id=\"" + innerId + "\"></div>");
-      return $.jqplot(innerId, [plotSeries], {
+      return $.jqplot(innerId, plotSeries, {
         highlighter: {
           show: true,
           sizeAdjust: 8
@@ -173,11 +230,65 @@
             min: 0,
             tickInterval: 2
           }
-        }
+        },
+        series: plotSeriesOptions
       });
     };
 
     return TrendChartRenderer;
+
+  })();
+
+  AccidentsMarkerRenderer = (function() {
+
+    function AccidentsMarkerRenderer(map) {
+      this.map = map;
+      this.markerArrays = {};
+    }
+
+    AccidentsMarkerRenderer.prototype.clearAccidents = function(mode) {
+      var accidents, marker, _i, _len, _ref, _ref2;
+      if (mode == null) mode = void 0;
+      if (!(mode != null)) {
+        _ref = this.markerArrays;
+        for (mode in _ref) {
+          accidents = _ref[mode];
+          this.clearAccidents(mode);
+        }
+        return;
+      }
+      if (!this.markerArrays[mode]) return;
+      _ref2 = this.markerArrays[mode];
+      for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+        marker = _ref2[_i];
+        marker.setMap(null);
+      }
+      return delete this.markerArrays[mode];
+    };
+
+    AccidentsMarkerRenderer.prototype.addAccidents = function(mode, accidents) {
+      var accident, latLng, latitude, longitude, marker, _i, _len, _results;
+      this.clearAccidents(mode);
+      if (accidents.length === 0) return;
+      this.markerArrays[mode] = [];
+      _results = [];
+      for (_i = 0, _len = accidents.length; _i < _len; _i++) {
+        accident = accidents[_i];
+        latitude = accident.Latitude;
+        longitude = accident.Longitude;
+        latLng = new google.maps.LatLng(latitude, longitude);
+        marker = new google.maps.Marker({
+          position: latLng
+        });
+        this.markerArrays[mode].push(marker);
+        _results.push(marker.setMap(this.map));
+      }
+      return _results;
+    };
+
+    AccidentsMarkerRenderer.prototype.render = function() {};
+
+    return AccidentsMarkerRenderer;
 
   })();
 
@@ -188,9 +299,10 @@
       this.origin = origin;
       this.destination = destination;
       this.city = city;
-      this.dataDiv = dataDiv;
-      this.chartDiv = chartDiv;
       this.setCity(this.city);
+      this.tableRenderer = new AccidentsTableRenderer(dataDiv);
+      this.chartRenderer = new TrendChartRenderer(chartDiv);
+      this.markerRenderer = new AccidentsMarkerRenderer(this.map);
     }
 
     Manager.prototype.setCity = function(city) {
@@ -240,86 +352,91 @@
       return this.directionsService || (this.directionsService = new google.maps.DirectionsService());
     };
 
-    Manager.prototype.getDirectionsRenderer = function() {
-      if (this.directionsRenderer != null) return this.directionsRenderer;
-      this.directionsRenderer = new google.maps.DirectionsRenderer();
-      this.directionsRenderer.setMap(this.map);
-      return this.directionsRenderer;
+    Manager.prototype.getDirectionsRenderer = function(mode) {
+      var color, _this;
+      this.directionsRenderers || (this.directionsRenderers = {});
+      if (!(this.directionsRenderers[mode] != null)) {
+        color = {
+          driving: 'yellow',
+          bicycling: 'blue'
+        }[mode];
+        this.directionsRenderers[mode] = new google.maps.DirectionsRenderer({
+          draggable: true,
+          map: this.map,
+          polylineOptions: {
+            strokeColor: color
+          },
+          preserveViewport: true,
+          suppressInfoWindows: true
+        });
+        this.directionsRenderers[mode].bikefile_mode = mode;
+        _this = this;
+        google.maps.event.addListener(this.directionsRenderers[mode], 'directions_changed', function(e) {
+          return _this.queryAndUpdatePolylineRelatedLayer(mode, this.directions);
+        });
+      }
+      return this.directionsRenderers[mode];
     };
 
-    Manager.prototype.queryAndUpdateDirections = function(callback) {
+    Manager.prototype.queryAndUpdateDirectionsForMode = function(mode) {
       var renderer, request, service;
-      request = this.getDirectionsRequest('bicycling');
+      request = this.getDirectionsRequest(mode);
+      renderer = this.getDirectionsRenderer(mode);
       service = this.getDirectionsService();
-      renderer = this.getDirectionsRenderer();
       return service.route(request, function(result, status) {
         if (status === google.maps.DirectionsStatus.OK) {
-          renderer.setDirections(result);
-          return callback(result);
+          return renderer.setDirections(result);
         }
       });
     };
 
-    Manager.prototype.queryAndUpdatePolylineRelatedLayer = function(googleDirectionsResult) {
+    Manager.prototype.queryAndUpdateDirections = function() {
+      this.clearOldData();
+      this.queryAndUpdateDirectionsForMode('bicycling');
+      return this.queryAndUpdateDirectionsForMode('driving');
+    };
+
+    Manager.prototype.queryAndUpdatePolylineRelatedLayer = function(mode, googleDirectionsResult) {
       var encoded_polyline, postData, url,
         _this = this;
-      if (this.lastRequest != null) {
-        this.lastRequest.cancel();
-        this.lastRequest = void 0;
+      this.lastRequests || (this.lastRequests = {});
+      if (this.lastRequests[mode] != null) {
+        this.lastRequests[mode].cancel();
+        delete this.lastRequests[mode];
       }
-      this.clearOldData();
+      this.clearOldData(mode);
       encoded_polyline = googleDirectionsResult.routes[0].overview_polyline.points;
       postData = {
         encoded_polyline: encoded_polyline
       };
       url = URL.replace(/%\{city\}/, this.city);
-      return this.lastRequest = $.ajax({
+      return this.lastRequests[mode] = $.ajax({
         url: url,
         type: 'POST',
         data: postData,
         dataType: 'json',
         success: function(data) {
-          _this.lastRequest = void 0;
-          _this.clearOldData();
-          return _this.handleNewData(data);
+          delete _this.lastRequests[mode];
+          _this.clearOldData(mode);
+          return _this.handleNewData(mode, data);
         }
       });
     };
 
-    Manager.prototype.clearOldData = function() {
-      var marker, _i, _len, _ref;
-      if (this.markers != null) {
-        _ref = this.markers;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          marker = _ref[_i];
-          marker.setMap(null);
-        }
-      }
-      this.markers = void 0;
-      $(this.dataDiv || []).empty();
-      return $(this.chartDiv || []).empty();
+    Manager.prototype.clearOldData = function(mode) {
+      if (mode == null) mode = void 0;
+      this.tableRenderer.clearAccidents(mode);
+      this.chartRenderer.clearAccidents(mode);
+      return this.markerRenderer.clearAccidents(mode);
     };
 
-    Manager.prototype.handleNewData = function(data) {
-      var accident, chartRenderer, latLng, latitude, longitude, marker, tableRenderer, _i, _len, _results;
-      tableRenderer = new AccidentsTableRenderer(this.dataDiv);
-      tableRenderer.render(data);
-      chartRenderer = new TrendChartRenderer(this.chartDiv);
-      chartRenderer.render(data);
-      this.markers = [];
-      _results = [];
-      for (_i = 0, _len = data.length; _i < _len; _i++) {
-        accident = data[_i];
-        latitude = accident.Latitude;
-        longitude = accident.Longitude;
-        latLng = new google.maps.LatLng(latitude, longitude);
-        marker = new google.maps.Marker({
-          position: latLng
-        });
-        this.markers.push(marker);
-        _results.push(marker.setMap(this.map));
-      }
-      return _results;
+    Manager.prototype.handleNewData = function(mode, data) {
+      this.tableRenderer.addAccidents(mode, data);
+      this.chartRenderer.addAccidents(mode, data);
+      this.markerRenderer.addAccidents(mode, data);
+      this.tableRenderer.render();
+      this.chartRenderer.render();
+      return this.markerRenderer.render();
     };
 
     return Manager;

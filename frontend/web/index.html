@@ -119,9 +119,7 @@
         toggleOriginDestination();
 
         if (origin && destination) {
-          manager.queryAndUpdateDirections(function(results) {
-            manager.queryAndUpdatePolylineRelatedLayer(results);
-          });
+          manager.queryAndUpdateDirections();
         }
       };
 
