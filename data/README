@@ -80,3 +80,12 @@ vancouver.csv: Vancouver bicycle accidents.
   Edits:
     - merged deaths and accidents into single spreadsheet with "fatal" column
     - changed Jul 26 to Jul 28 for 2006 accident at Clark/Grandview
+
+calgary.csv: Calgary bicycle accidents.
+  Years: 1996 to 2011
+  Source: Calgary Police Department
+  License: public domain
+  Edits:
+    - formatted into prettier text
+    - Replaced strings like "On RICHMOND RD SW between SARCEE TR SW & 51 S" with
+      strings like "RICHMOND RD SW at SARCEE TR SW", for Google's geocoder

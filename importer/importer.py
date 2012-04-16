@@ -16,6 +16,16 @@ DB_SCHEMAS = {
         ('Longitude', 'FLOAT')
     ),
     'calgary': (
+        ('Time', 'TIMESTAMP', 'NOT NULL'),
+        ('Address', 'VARCHAR', 'NOT NULL'),
+        ('Injury level', 'VARCHAR'),
+        ('Age', 'INT'),
+        ('Sex', 'CHAR(1)'),
+        ('Safety equipment', 'VARCHAR'),
+        ('Primary event', 'VARCHAR'),
+        ('Severity', 'VARCHAR'),
+        ('Latitude', 'FLOAT'),
+        ('Longitude', 'FLOAT')
     ),
     'toronto': (
         ('Time', 'TIMESTAMP', 'NOT NULL'),
