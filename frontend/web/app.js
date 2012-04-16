@@ -372,7 +372,8 @@
         longitude = accident.Longitude;
         latLng = new google.maps.LatLng(latitude, longitude);
         marker = new google.maps.Marker({
-          position: latLng
+          position: latLng,
+          flat: true
         });
         this.markerArrays[mode].push(marker);
         _results.push(marker.setMap(this.map));

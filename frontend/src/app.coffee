@@ -256,7 +256,10 @@ class AccidentsMarkerRenderer
       latitude = accident.Latitude
       longitude = accident.Longitude
       latLng = new google.maps.LatLng(latitude, longitude)
-      marker = new google.maps.Marker(position: latLng)
+      marker = new google.maps.Marker({
+        position: latLng,
+        flat: true,
+      })
       @markerArrays[mode].push(marker)
       marker.setMap(@map)
 
