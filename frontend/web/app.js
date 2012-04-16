@@ -1,12 +1,14 @@
 (function() {
-  var AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, Manager, TrendChartRenderer, URL, selectText;
+  var AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, Manager, Renderer, SummaryRenderer, TrendChartRenderer, URL, make_expander, selectText,
+    __hasProp = Object.prototype.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   URL = 'http://localhost:8000/%{city}';
 
   COLORS = {
-    driving: '#ffff00',
-    bicycling: '#00ff00',
-    both: '#88ff00'
+    driving: '#cccc00',
+    bicycling: '#00cc00',
+    both: '#77cc00'
   };
 
   CITIES = {
@@ -85,14 +87,11 @@
 
   })();
 
-  AccidentsTableRenderer = (function() {
+  Renderer = (function() {
 
-    function AccidentsTableRenderer(div) {
-      this.div = div;
-      this.accidents = {};
-    }
+    function Renderer() {}
 
-    AccidentsTableRenderer.prototype.clearAccidents = function(mode) {
+    Renderer.prototype.clearAccidents = function(mode) {
       if (mode == null) mode = void 0;
       if (!(mode != null)) {
         return this.accidents = {};
@@ -100,6 +99,72 @@
         return delete this.accidents[mode];
       }
     };
+
+    Renderer.prototype.addAccidents = function(mode, accidents) {
+      return this.accidents[mode] = accidents;
+    };
+
+    return Renderer;
+
+  })();
+
+  SummaryRenderer = (function(_super) {
+
+    __extends(SummaryRenderer, _super);
+
+    function SummaryRenderer(div) {
+      this.div = div;
+      this.accidents = {};
+      this.status = 'no-input';
+    }
+
+    SummaryRenderer.prototype.setStatus = function(status) {
+      this.status = status;
+    };
+
+    SummaryRenderer.prototype.render = function() {
+      var bicycling, driving, html, nBicycling, nDriving;
+      html = '';
+      if (this.status === 'no-input') {
+        html = 'Choose an origin and destination...';
+      } else {
+        bicycling = this.accidents.bicycling != null;
+        driving = this.accidents.driving != null;
+        if (bicycling) nBicycling = this.accidents.bicycling.length;
+        if (driving) nDriving = this.accidents.driving.length;
+        if (!bicycling && !driving) {
+          html = 'Waiting for server...';
+        } else {
+          if (!bicycling) {
+            html = 'Waiting for server for bicycling data...';
+          } else if (!driving) {
+            html = 'waiting for server for driving data...';
+          } else if (nBicycling === 0 && nDriving !== 0) {
+            html = "There have been <span class=\"driving\">" + nDriving + "</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and none for the <span class=\"bicycling\">bicycling</span> route.";
+          } else if (nDriving === 0 && nBicycling !== 0) {
+            html = "There have been <span class=\"bicycling\">" + nBicycling + "</span> reported accidents involving cyclists along the <span class=\"bicycling\">bicycling</span> route and none for the <span class=\"driving\">driving</span> route.";
+          } else if (nDriving === 0 && nBicycling === 0) {
+            html = "There have been no reported accidents involving cyclists along either the <span class=\"bicycling\">bicycling</span> or <span class=\"driving\">driving</span> routes.";
+          } else {
+            html = "There have been <span class=\"driving\">" + nDriving + "</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and <span class=\"bicycling\">" + nBicycling + "</span> along the <span class=\"bicycling\">bicycling</span> route.";
+          }
+        }
+      }
+      return $(this.div).html(html);
+    };
+
+    return SummaryRenderer;
+
+  })(Renderer);
+
+  AccidentsTableRenderer = (function(_super) {
+
+    __extends(AccidentsTableRenderer, _super);
+
+    function AccidentsTableRenderer(div) {
+      this.div = div;
+      this.accidents = {};
+    }
 
     AccidentsTableRenderer.prototype.addAccidents = function(mode, accidents) {
       var accident, _i, _len;
@@ -194,7 +259,7 @@
 
     return AccidentsTableRenderer;
 
-  })();
+  })(Renderer);
 
   TrendChartRenderer = (function() {
 
@@ -323,12 +388,15 @@
 
   Manager = (function() {
 
-    function Manager(map, origin, destination, city, dataDiv, chartDiv) {
+    function Manager(map, origin, destination, city, summaryDiv, chartDiv, dataDiv) {
       this.map = map;
       this.origin = origin;
       this.destination = destination;
       this.city = city;
       this.setCity(this.city);
+      this.summaryRenderer = new SummaryRenderer(summaryDiv);
+      this.summaryRenderer.setStatus('no-input');
+      this.summaryRenderer.render();
       this.tableRenderer = new AccidentsTableRenderer(dataDiv);
       this.chartRenderer = new TrendChartRenderer(chartDiv);
       this.markerRenderer = new AccidentsMarkerRenderer(this.map);
@@ -421,6 +489,7 @@
 
     Manager.prototype.queryAndUpdateDirections = function() {
       this.clearOldData();
+      this.summaryRenderer.setStatus('querying');
       this.queryAndUpdateDirectionsForMode('bicycling');
       return this.queryAndUpdateDirectionsForMode('driving');
     };
@@ -454,15 +523,18 @@
 
     Manager.prototype.clearOldData = function(mode) {
       if (mode == null) mode = void 0;
+      this.summaryRenderer.clearAccidents(mode);
       this.tableRenderer.clearAccidents(mode);
       this.chartRenderer.clearAccidents(mode);
       return this.markerRenderer.clearAccidents(mode);
     };
 
     Manager.prototype.handleNewData = function(mode, data) {
+      this.summaryRenderer.addAccidents(mode, data);
       this.tableRenderer.addAccidents(mode, data);
       this.chartRenderer.addAccidents(mode, data);
       this.markerRenderer.addAccidents(mode, data);
+      this.summaryRenderer.render();
       this.tableRenderer.render();
       this.chartRenderer.render();
       return this.markerRenderer.render();
@@ -473,5 +545,25 @@
   })();
 
   window.Manager = Manager;
+
+  make_expander = function(div) {
+    var $h2;
+    $h2 = $(div).children('h2');
+    return $h2.on('click', function(e) {
+      var $inner;
+      $inner = $(div).children('div');
+      if ($inner.is(':visible')) {
+        return $inner.hide();
+      } else {
+        return $inner.show();
+      }
+    });
+  };
+
+  $.fn.expander = function() {
+    return $.each(this, function() {
+      return make_expander(this);
+    });
+  };
 
 }).call(this);

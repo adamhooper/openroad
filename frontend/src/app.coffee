@@ -1,9 +1,9 @@
 URL = 'http://localhost:8000/%{city}'
 
 COLORS = {
-  driving: '#ffff00',
-  bicycling: '#00ff00',
-  both: '#88ff00',
+  driving: '#cccc00',
+  bicycling: '#00cc00',
+  both: '#77cc00',
 }
 
 CITIES = {
@@ -63,15 +63,56 @@ class ChartSeriesMaker
   getSeries: () ->
     ([ +k, v ] for k, v of @data)
 
-class AccidentsTableRenderer
-  constructor: (@div) ->
-    @accidents = {}
-
+class Renderer
   clearAccidents: (mode = undefined) ->
     if !mode?
       @accidents = {}
     else
       delete @accidents[mode]
+
+  addAccidents: (mode, accidents) ->
+    @accidents[mode] = accidents
+
+class SummaryRenderer extends Renderer
+  constructor: (@div) ->
+    @accidents = {}
+    @status = 'no-input'
+
+  setStatus: (@status) ->
+
+  render: () ->
+    html = ''
+
+    if @status == 'no-input'
+      html = 'Choose an origin and destination...'
+    else
+      bicycling = @accidents.bicycling?
+      driving = @accidents.driving?
+
+      nBicycling = @accidents.bicycling.length if bicycling
+      nDriving = @accidents.driving.length if driving
+
+      if !bicycling and !driving
+        html = 'Waiting for server...'
+      else
+        if !bicycling
+          html = 'Waiting for server for bicycling data...'
+        else if !driving
+          html = 'waiting for server for driving data...'
+        else if nBicycling == 0 && nDriving != 0
+          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and none for the <span class=\"bicycling\">bicycling</span> route."
+        else if nDriving == 0 && nBicycling != 0
+          html = "There have been <span class=\"bicycling\">#{nBicycling}</span> reported accidents involving cyclists along the <span class=\"bicycling\">bicycling</span> route and none for the <span class=\"driving\">driving</span> route."
+        else if nDriving == 0 && nBicycling == 0
+          html = "There have been no reported accidents involving cyclists along either the <span class=\"bicycling\">bicycling</span> or <span class=\"driving\">driving</span> routes."
+        else
+          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and <span class=\"bicycling\">#{nBicycling}</span> along the <span class=\"bicycling\">bicycling</span> route."
+
+    $(@div).html(html)
+
+class AccidentsTableRenderer extends Renderer
+  constructor: (@div) ->
+    @accidents = {}
 
   addAccidents: (mode, accidents) ->
     for accident in accidents
@@ -223,8 +264,11 @@ class AccidentsMarkerRenderer
     # nothing. See addAccidents()
 
 class Manager
-  constructor: (@map, @origin, @destination, @city, dataDiv, chartDiv) ->
+  constructor: (@map, @origin, @destination, @city, summaryDiv, chartDiv, dataDiv) ->
     this.setCity(@city)
+    @summaryRenderer = new SummaryRenderer(summaryDiv)
+    @summaryRenderer.setStatus('no-input')
+    @summaryRenderer.render()
     @tableRenderer = new AccidentsTableRenderer(dataDiv)
     @chartRenderer = new TrendChartRenderer(chartDiv)
     @markerRenderer = new AccidentsMarkerRenderer(@map)
@@ -299,9 +343,10 @@ class Manager
       if status == google.maps.DirectionsStatus.OK
         renderer.setDirections(result)
 
-
   queryAndUpdateDirections: () ->
     this.clearOldData()
+
+    @summaryRenderer.setStatus('querying')
 
     this.queryAndUpdateDirectionsForMode('bicycling')
     this.queryAndUpdateDirectionsForMode('driving')
@@ -328,17 +373,33 @@ class Manager
     })
 
   clearOldData: (mode = undefined) ->
+    @summaryRenderer.clearAccidents(mode)
     @tableRenderer.clearAccidents(mode)
     @chartRenderer.clearAccidents(mode)
     @markerRenderer.clearAccidents(mode)
 
   handleNewData: (mode, data) ->
+    @summaryRenderer.addAccidents(mode, data)
     @tableRenderer.addAccidents(mode, data)
     @chartRenderer.addAccidents(mode, data)
     @markerRenderer.addAccidents(mode, data)
 
+    @summaryRenderer.render()
     @tableRenderer.render()
     @chartRenderer.render()
     @markerRenderer.render()
 
 window.Manager = Manager
+
+make_expander = (div) ->
+  $h2 = $(div).children('h2')
+
+  $h2.on 'click', (e) ->
+    $inner = $(div).children('div')
+    if $inner.is(':visible')
+      $inner.hide()
+    else
+      $inner.show()
+
+$.fn.expander = () ->
+  $.each this, () -> make_expander(this)

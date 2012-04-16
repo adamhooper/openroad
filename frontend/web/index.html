@@ -9,16 +9,21 @@
         text-align: center;
       }
 
+      h2 {
+        font-size: 1em;
+        cursor: pointer;
+      }
+
       .driving {
-        color: #ffff00;
+        color: #cccc00;
       }
 
       .bicycling {
-        color: #00ff00;
+        color: #00cc00;
       }
 
       .both {
-        color: #88ff00;
+        color: #77cc00;
       }
 
       ul#city {
@@ -88,8 +93,15 @@
       </div>
     </form>
     <div id="map"></div>
-    <div id="chart"></div>
-    <div id="data"></div>
+    <div id="summary"></div>
+    <div class="expander">
+      <h2>Accidents along these paths, per year</h2>
+      <div style="display: none;" id="chart"></div>
+    </div>
+    <div class="expander">
+      <h2>Detailed accident reports along these paths</h2>
+      <div style="display: none;" id="data"></div>
+    </div>
     <p>Choose your city:</p>
     <ul id="city">
       <li><a href="#vancouver">Vancouver</a></li>
@@ -112,9 +124,10 @@
         zoom: 1
       });
 
-      var dataDiv = document.getElementById('data');
+      var summaryDiv = document.getElementById('summary');
       var chartDiv = document.getElementById('chart');
-      var manager = new Manager(map, undefined, undefined, 'toronto', dataDiv, chartDiv);
+      var dataDiv = document.getElementById('data');
+      var manager = new Manager(map, undefined, undefined, 'toronto', summaryDiv, chartDiv, dataDiv);
 
       var bikeLayer = new google.maps.BicyclingLayer();
       bikeLayer.setMap(map);
@@ -195,6 +208,8 @@
       });
 
       refreshOriginDestination();
+
+      $('div.expander').expander();
     </script>
   </body>
 </html>
