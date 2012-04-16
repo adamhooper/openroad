@@ -5,6 +5,22 @@
     <link rel="stylesheet" type="text/css" href="jquery.jqplot.min.css" />
 
     <style type="text/css">
+      h1 {
+        text-align: center;
+      }
+
+      .driving {
+        color: #ffff00;
+      }
+
+      .bicycling {
+        color: #00ff00;
+      }
+
+      .both {
+        color: #88ff00;
+      }
+
       ul#city {
         margin: .5em 0;
         padding: 0;
@@ -62,14 +78,7 @@
     </style>
   </head>
   <body>
-    <ul id="city">
-      <li><a href="#vancouver">Vancouver</a></li>
-      <!--<li><a href="#calgary">Calgary</a></li>-->
-      <li class="selected"><a href="#toronto">Toronto</a></li>
-      <!--<li><a href="#ottawa">Ottawa</a></li>-->
-      <li><a href="#montreal">Montreal</a></li>
-      <li><a href="#halifax">Halifax</a></li>
-    </ul>
+    <h1><span class="driving">Drive</span> or <span class="bicycling">bike</span>?</h1>
     <form id="origin-destination">
       <div class="origin">
         <input type="submit" value="Set origin" />
@@ -81,6 +90,15 @@
     <div id="map"></div>
     <div id="chart"></div>
     <div id="data"></div>
+    <p>Choose your city:</p>
+    <ul id="city">
+      <li><a href="#vancouver">Vancouver</a></li>
+      <li><a href="#calgary">Calgary</a></li>
+      <li class="selected"><a href="#toronto">Toronto</a></li>
+      <!--<li><a href="#ottawa">Ottawa</a></li>-->
+      <li><a href="#montreal">Montreal</a></li>
+      <li><a href="#halifax">Halifax</a></li>
+    </ul>
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.7&sensor=true&key=AIzaSyDWrbWJ46ET44B2Z0UFdqsT3DbsZXKXuqU"></script>
     <script type="text/javascript" src="jquery-1.7.1.min.js"></script>
     <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="excanvas.min.js"></script><![endif]-->

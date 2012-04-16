@@ -106,6 +106,8 @@ def application(env, start_response):
         ORDER BY distance_along_path
         ''' % (city, polyline_as_sql)
 
+    print(q)
+
     db = psycopg2.connect(DSN)
     c = db.cursor(cursor_factory=_RealDictCursor)
     c.execute(q)

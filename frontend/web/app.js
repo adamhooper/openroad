@@ -1,15 +1,45 @@
 (function() {
-  var AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, ChartSeriesMaker, Manager, TrendChartRenderer, URL, selectText;
+  var AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, Manager, TrendChartRenderer, URL, selectText;
 
   URL = 'http://localhost:8000/%{city}';
 
+  COLORS = {
+    driving: '#ffff00',
+    bicycling: '#00ff00',
+    both: '#88ff00'
+  };
+
   CITIES = {
-    'vancouver': new google.maps.LatLngBounds(new google.maps.LatLng(49.131859, -123.264954), new google.maps.LatLng(49.352188, -122.985718)),
-    'calgary': new google.maps.LatLngBounds(new google.maps.LatLng(50.842941, -114.613968), new google.maps.LatLng(51.343868, -113.901817)),
-    'toronto': new google.maps.LatLngBounds(new google.maps.LatLng(43.584740, -79.639297), new google.maps.LatLng(43.855419, -79.115623)),
-    'ottawa': new google.maps.LatLngBounds(new google.maps.LatLng(44.962002, -76.355766), new google.maps.LatLng(45.536541, -75.246033)),
-    'montreal': new google.maps.LatLngBounds(new google.maps.LatLng(45.413479, -73.976608), new google.maps.LatLng(45.704788, -73.476418)),
-    'halifax': new google.maps.LatLngBounds(new google.maps.LatLng(44.434570, -64.237190), new google.maps.LatLng(45.276489, -62.160469))
+    vancouver: {
+      latitude: 49.2505,
+      longitude: -123.1119,
+      zoom: 12
+    },
+    calgary: {
+      latitude: 51.0451,
+      longitude: -114.0569,
+      zoom: 12
+    },
+    toronto: {
+      latitude: 43.6481,
+      longitude: -79.4042,
+      zoom: 13
+    },
+    ottawa: {
+      latitude: 45.4214,
+      longitude: -75.6919,
+      zoom: 12
+    },
+    montreal: {
+      latitude: 45.5081,
+      longitude: -73.5550,
+      zoom: 12
+    },
+    halifax: {
+      latitude: 44.6479,
+      longitude: -63.5744,
+      zoom: 12
+    }
   };
 
   selectText = function(element) {
@@ -151,6 +181,8 @@
           textNode = document.createTextNode(accident[heading] || accident[key] || '');
           $tds[i].appendChild(textNode);
         }
+        mode = /bicycling/.test(accident.distance_along_path) && 'bicycling' || 'driving';
+        $tds[0].className += " " + mode;
         $tbody.append($tr);
       }
       $table.on('dblclick', function(e) {
@@ -200,10 +232,7 @@
       _ref = this.series;
       for (mode in _ref) {
         series = _ref[mode];
-        color = {
-          bicycling: 'blue',
-          driving: 'yellow'
-        }[mode];
+        color = COLORS[mode];
         plotSeries.push(series);
         plotSeriesOptions.push({
           color: color
@@ -306,10 +335,13 @@
     }
 
     Manager.prototype.setCity = function(city) {
-      var bounds;
+      var latlng, zoom, zoomData;
       this.city = city;
-      bounds = CITIES[this.city];
-      return this.map.fitBounds(bounds);
+      zoomData = CITIES[this.city];
+      latlng = new google.maps.LatLng(zoomData.latitude, zoomData.longitude);
+      zoom = zoomData.zoom;
+      this.map.setCenter(latlng);
+      return this.map.setZoom(zoom);
     };
 
     Manager.prototype.setOrigin = function(origin) {
@@ -356,10 +388,7 @@
       var color, _this;
       this.directionsRenderers || (this.directionsRenderers = {});
       if (!(this.directionsRenderers[mode] != null)) {
-        color = {
-          driving: 'yellow',
-          bicycling: 'blue'
-        }[mode];
+        color = COLORS[mode];
         this.directionsRenderers[mode] = new google.maps.DirectionsRenderer({
           draggable: true,
           map: this.map,
@@ -401,7 +430,7 @@
         _this = this;
       this.lastRequests || (this.lastRequests = {});
       if (this.lastRequests[mode] != null) {
-        this.lastRequests[mode].cancel();
+        this.lastRequests[mode].abort();
         delete this.lastRequests[mode];
       }
       this.clearOldData(mode);

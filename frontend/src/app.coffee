@@ -1,30 +1,42 @@
 URL = 'http://localhost:8000/%{city}'
 
+COLORS = {
+  driving: '#ffff00',
+  bicycling: '#00ff00',
+  both: '#88ff00',
+}
+
 CITIES = {
-  'vancouver': new google.maps.LatLngBounds(
-    new google.maps.LatLng(49.131859, -123.264954),
-    new google.maps.LatLng(49.352188, -122.985718)
-  ),
-  'calgary': new google.maps.LatLngBounds(
-    new google.maps.LatLng(50.842941, -114.613968),
-    new google.maps.LatLng(51.343868, -113.901817)
-  ),
-  'toronto': new google.maps.LatLngBounds(
-    new google.maps.LatLng(43.584740, -79.639297),
-    new google.maps.LatLng(43.855419, -79.115623)
-  ),
-  'ottawa': new google.maps.LatLngBounds(
-    new google.maps.LatLng(44.962002, -76.355766),
-    new google.maps.LatLng(45.536541, -75.246033)
-  ),
-  'montreal': new google.maps.LatLngBounds(
-    new google.maps.LatLng(45.413479, -73.976608),
-    new google.maps.LatLng(45.704788, -73.476418)
-  ),
-  'halifax': new google.maps.LatLngBounds(
-    new google.maps.LatLng(44.434570, -64.237190),
-    new google.maps.LatLng(45.276489, -62.160469)
-  ),
+  vancouver: {
+    latitude: 49.2505,
+    longitude: -123.1119,
+    zoom: 12,
+  },
+  calgary: {
+    latitude: 51.0451,
+    longitude: -114.0569,
+    zoom: 12,
+  },
+  toronto: {
+    latitude: 43.6481,
+    longitude: -79.4042,
+    zoom: 13,
+  },
+  ottawa: {
+    latitude: 45.4214,
+    longitude: -75.6919,
+    zoom: 12,
+  },
+  montreal: {
+    latitude: 45.5081,
+    longitude: -73.5550,
+    zoom: 12,
+  },
+  halifax: {
+    latitude: 44.6479,
+    longitude: -63.5744,
+    zoom: 12,
+  },
 }
 
 selectText = (element) ->
@@ -119,6 +131,9 @@ class AccidentsTableRenderer
         textNode = document.createTextNode(accident[heading] || accident[key] || '')
         $tds[i].appendChild(textNode)
 
+      mode = /bicycling/.test(accident.distance_along_path) && 'bicycling' || 'driving'
+      $tds[0].className += " #{mode}"
+
       $tbody.append($tr)
 
     $table.on 'dblclick', (e) ->
@@ -153,11 +168,7 @@ class TrendChartRenderer
     plotSeriesOptions = []
 
     for mode, series of @series
-      color = {
-        bicycling: 'blue',
-        driving: 'yellow',
-      }[mode]
-
+      color = COLORS[mode]
       plotSeries.push(series)
       plotSeriesOptions.push({color:color})
 
@@ -219,8 +230,11 @@ class Manager
     @markerRenderer = new AccidentsMarkerRenderer(@map)
 
   setCity: (@city) ->
-    bounds = CITIES[@city]
-    @map.fitBounds(bounds)
+    zoomData = CITIES[@city]
+    latlng = new google.maps.LatLng(zoomData.latitude, zoomData.longitude)
+    zoom = zoomData.zoom
+    @map.setCenter(latlng)
+    @map.setZoom(zoom)
 
   setOrigin: (@origin) ->
 
@@ -257,10 +271,7 @@ class Manager
     @directionsRenderers ||= {}
 
     if !@directionsRenderers[mode]?
-      color = {
-        driving: 'yellow',
-        bicycling: 'blue',
-      }[mode]
+      color = COLORS[mode]
 
       @directionsRenderers[mode] = new google.maps.DirectionsRenderer({
         draggable: true,
@@ -299,7 +310,7 @@ class Manager
     @lastRequests ||= {}
 
     if @lastRequests[mode]?
-      @lastRequests[mode].cancel()
+      @lastRequests[mode].abort()
       delete @lastRequests[mode]
 
     this.clearOldData(mode) # just in case?
