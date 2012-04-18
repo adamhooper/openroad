@@ -1,14 +1,71 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2.7
+
+CITIES = [ 'montreal', 'toronto', 'calgary', 'vancouver', 'ottawa', 'halifax' ]
+DSN = 'dbname=bikefile user=bikefile password=bikefile host=localhost'
+
+RANGE_IN_M = 30
+ERROR_IN_M = 25
 
 import cgi
 import json
 import re
 
-CITIES = [ 'montreal', 'toronto', 'calgary', 'vancouver', 'ottawa', 'halifax' ]
-DSN = 'dbname=bikefile user=bikefile password=bikefile host=localhost'
-
 import psycopg2
 from psycopg2.extras import RealDictCursor as _RealDictCursor
+
+M_PER_DEGREE = 110574.27 # very rough
+
+error_in_degrees2 = (ERROR_IN_M / M_PER_DEGREE)**2
+
+
+def distance_squared_from_segment_to_point(segment, point):
+    p1, p2 = segment
+    p = point
+
+    vx = p1[0] - p[0]
+    vy = p1[1] - p[1]
+
+    if p1 == p2:
+        return vx*vx + vy*vy
+
+    ux = p2[0] - p1[0]
+    uy = p2[1] - p1[1]
+    length2 = ux*ux + uy*uy
+
+    det = (-vx*ux) + (-vy*uy)
+
+    if (det < 0 or det > length2):
+        # We're outside the line segment
+        ux = p2[0] - p[0]
+        uy = p2[1] - p[1]
+        return min(vx*vx+vy*vy, ux*ux+uy*uy)
+
+    det = ux*vy - uy*vx
+    return det*det / length2
+
+def douglas_peucker_step(points, distance_squared):
+    segment = ( points[0], points[-1] )
+    max_i = 0
+    max_d = 0
+
+    for i in xrange(1, len(points) - 1):
+        p = points[i]
+        d = distance_squared_from_segment_to_point(segment, p)
+        if d > max_d:
+            max_i = i
+            max_d = d
+    
+    if max_d >= distance_squared:
+        return douglas_peucker_step(points[:max_i], distance_squared) + douglas_peucker_step(points[max_i:], distance_squared)
+    else:
+        return segment
+
+def simplify_line(points):
+    v1 = len(points)
+    ret = douglas_peucker_step(points, error_in_degrees2)
+    v2 = len(ret)
+    print("Before: %d; after: %d; error: %f" % (v1, v2, error_in_degrees2))
+    return ret
 
 def _decode_line(encoded):
     """Decodes a polyline that was encoded using the Google Maps method.
@@ -33,7 +90,7 @@ def _decode_line(encoded):
         result = 0
 
         while True:
-            b = encoded[index] - 63
+            b = ord(encoded[index]) - 63
             index = index + 1
             result |= (b & 0x1f) << shift
             shift += 5
@@ -47,7 +104,7 @@ def _decode_line(encoded):
         result = 0
 
         while True:
-            b = encoded[index] - 63
+            b = ord(encoded[index]) - 63
             index = index + 1
             result |= (b & 0x1f) << shift
             shift += 5
@@ -87,11 +144,13 @@ def application(env, start_response):
 
     polyline = _decode_line(encoded_polyline)
 
-    if polyline is None or len(polyline) == 0:
+    if polyline is None or len(polyline) < 2:
         start_response('404 Not Found', [
             ('Content-Type', 'text/plain; charset=UTF-8')
         ])
         return [ b'You must POST a parameter named "encoded_polyline"' ]
+
+    polyline = simplify_line(polyline)
 
     polyline_as_sql = _polyline_to_sql(polyline)
 
@@ -101,10 +160,10 @@ def application(env, start_response):
             (ST_Line_Locate_Point(path.path, ST_ClosestPoint(path.path, "Location"::geometry)) * ST_Length(path.path::geography))::INT AS distance_along_path
         FROM %s
         INNER JOIN (SELECT %s AS path) path ON 1=1
-        WHERE ST_DWithin("Location", path.path::geography, 20)
+        WHERE ST_DWithin("Location", path.path::geography, %d)
           AND "Time" > '2001-01-01 00:00:00'
         ORDER BY distance_along_path
-        ''' % (city, polyline_as_sql)
+        ''' % (city, polyline_as_sql, RANGE_IN_M)
 
     print(q)
 
