@@ -18,8 +18,8 @@ CITIES = {
     zoom: 12,
   },
   toronto: {
-    latitude: 43.6481,
-    longitude: -79.4042,
+    latitude: 43.6517,
+    longitude: -79.3827,
     zoom: 13,
   },
   ottawa: {
@@ -30,7 +30,7 @@ CITIES = {
   montreal: {
     latitude: 45.5081,
     longitude: -73.5550,
-    zoom: 12,
+    zoom: 13,
   },
   halifax: {
     latitude: 44.6479,
@@ -234,6 +234,82 @@ class AccidentsMarkerRenderer
   constructor: (@map) ->
     @markerArrays = {}
 
+    iconStyles = []
+
+    clusterUrlRoot = "#{window.location.protocol}//#{window.location.host}#{window.location.pathname.replace(/[^\/]*$/, '')}/icons"
+
+    calculateMarkerStyleIndex = (markers, nIconStyles) ->
+      # There are 9 styles:
+      # 0: driving, small
+      # 1: driving, medium
+      # 2: driving, large
+      # 3: bicycling, small
+      # 4: bicycling, medium
+      # 5: bicycling, large
+      # 6: both, small
+      # 7: both, medium
+      # 8: both, large
+
+      accidentsPath = undefined
+      for marker in markers
+        if !accidentsPath?
+          accidentsPath = marker.accidentPath
+        if accidentsPath != marker.accidentPath
+          accidentsPath = 'both'
+          break
+
+      accidentsPathToSmallestIconIndex = {
+        driving: 0,
+        bicycling: 3,
+        both: 6,
+      }
+
+      iconIndexAddition = 0
+      if markers.length > 1
+        iconIndexAddition += 1
+      if markers.length > 3
+        iconIndexAddition += 1
+
+      text = "#{markers.length}"
+      text = '1' if markers.length == 1
+
+      index = accidentsPathToSmallestIconIndex[accidentsPath] + iconIndexAddition
+
+      {
+        text: text,
+        index: index + 1
+      }
+
+    makeIconStyle = (mode, index, size) ->
+      {
+        width: size,
+        height: size,
+        textSize: size - 4
+        url: "#{clusterUrlRoot}/cluster-#{mode}-#{index+1}.png",
+      }
+
+    iconStyles = [
+      makeIconStyle('driving', 0, 13),
+      makeIconStyle('driving', 1, 15),
+      makeIconStyle('driving', 2, 17),
+      makeIconStyle('bicycling', 0, 13),
+      makeIconStyle('bicycling', 1, 15),
+      makeIconStyle('bicycling', 2, 17),
+      makeIconStyle('both', 0, 13),
+      makeIconStyle('both', 1, 15),
+      makeIconStyle('both', 2, 17),
+    ]
+
+    @clusterer = new MarkerClusterer(@map, [], {
+      averageCenter: true,
+      gridSize: 15,
+      styles: iconStyles,
+      calculator: calculateMarkerStyleIndex,
+      minimumClusterSize: 1,
+      printable: true,
+      zoomOnClick: false,
+    })
+
   clearAccidents: (mode = undefined) ->
     if !mode?
       this.clearAccidents(mode) for mode, accidents of @markerArrays
@@ -241,8 +317,7 @@ class AccidentsMarkerRenderer
 
     return if !@markerArrays[mode]
 
-    for marker in @markerArrays[mode]
-      marker.setMap(null)
+    @clusterer.removeMarkers(@markerArrays[mode])
 
     delete @markerArrays[mode]
 
@@ -260,8 +335,25 @@ class AccidentsMarkerRenderer
         position: latLng,
         flat: true,
       })
+      marker.accidentUniqueKey = "#{latitude}|#{longitude}|#{accident.Time}"
       @markerArrays[mode].push(marker)
-      marker.setMap(@map)
+
+    accidentKeyToMode = {}
+    for mode, markers of @markerArrays
+      for marker in markers
+        key = marker.accidentUniqueKey
+        if accidentKeyToMode[key]? && accidentKeyToMode[key] != mode
+          accidentKeyToMode[key] = 'both'
+        else
+          accidentKeyToMode[key] = mode
+
+    for _, markers of @markerArrays
+      for marker in markers
+        key = marker.accidentUniqueKey
+        marker.accidentPath = accidentKeyToMode[key]
+
+    @clusterer.addMarkers(@markerArrays[mode], true)
+    @clusterer.repaint()
 
   render: () ->
     # nothing. See addAccidents()

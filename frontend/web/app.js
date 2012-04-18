@@ -23,8 +23,8 @@
       zoom: 12
     },
     toronto: {
-      latitude: 43.6481,
-      longitude: -79.4042,
+      latitude: 43.6517,
+      longitude: -79.3827,
       zoom: 13
     },
     ottawa: {
@@ -35,7 +35,7 @@
     montreal: {
       latitude: 45.5081,
       longitude: -73.5550,
-      zoom: 12
+      zoom: 13
     },
     halifax: {
       latitude: 44.6479,
@@ -336,12 +336,60 @@
   AccidentsMarkerRenderer = (function() {
 
     function AccidentsMarkerRenderer(map) {
+      var calculateMarkerStyleIndex, clusterUrlRoot, iconStyles, makeIconStyle;
       this.map = map;
       this.markerArrays = {};
+      iconStyles = [];
+      clusterUrlRoot = "" + window.location.protocol + "//" + window.location.host + (window.location.pathname.replace(/[^\/]*$/, '')) + "/icons";
+      calculateMarkerStyleIndex = function(markers, nIconStyles) {
+        var accidentsPath, accidentsPathToSmallestIconIndex, iconIndexAddition, index, marker, text, _i, _len;
+        accidentsPath = void 0;
+        for (_i = 0, _len = markers.length; _i < _len; _i++) {
+          marker = markers[_i];
+          if (!(accidentsPath != null)) accidentsPath = marker.accidentPath;
+          if (accidentsPath !== marker.accidentPath) {
+            accidentsPath = 'both';
+            break;
+          }
+        }
+        accidentsPathToSmallestIconIndex = {
+          driving: 0,
+          bicycling: 3,
+          both: 6
+        };
+        iconIndexAddition = 0;
+        if (markers.length > 1) iconIndexAddition += 1;
+        if (markers.length > 3) iconIndexAddition += 1;
+        text = "" + markers.length;
+        if (markers.length === 1) text = '1';
+        index = accidentsPathToSmallestIconIndex[accidentsPath] + iconIndexAddition;
+        return {
+          text: text,
+          index: index + 1
+        };
+      };
+      makeIconStyle = function(mode, index, size) {
+        return {
+          width: size,
+          height: size,
+          textSize: size - 4,
+          url: "" + clusterUrlRoot + "/cluster-" + mode + "-" + (index + 1) + ".png"
+        };
+      };
+      iconStyles = [makeIconStyle('driving', 0, 13), makeIconStyle('driving', 1, 15), makeIconStyle('driving', 2, 17), makeIconStyle('bicycling', 0, 13), makeIconStyle('bicycling', 1, 15), makeIconStyle('bicycling', 2, 17), makeIconStyle('both', 0, 13), makeIconStyle('both', 1, 15), makeIconStyle('both', 2, 17)];
+      this.clusterer = new MarkerClusterer(this.map, [], {
+        averageCenter: true,
+        gridSize: 15,
+        styles: iconStyles,
+        calculator: calculateMarkerStyleIndex,
+        minimumClusterSize: 1,
+        printable: true,
+        zoomOnClick: false
+      });
     }
 
     AccidentsMarkerRenderer.prototype.clearAccidents = function(mode) {
-      var accidents, marker, _i, _len, _ref, _ref2;
+      var accidents, _ref;
       if (mode == null) mode = void 0;
       if (!(mode != null)) {
         _ref = this.markerArrays;
@@ -352,20 +400,15 @@
         return;
       }
       if (!this.markerArrays[mode]) return;
-      _ref2 = this.markerArrays[mode];
-      for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
-        marker = _ref2[_i];
-        marker.setMap(null);
-      }
+      this.clusterer.removeMarkers(this.markerArrays[mode]);
       return delete this.markerArrays[mode];
     };
 
     AccidentsMarkerRenderer.prototype.addAccidents = function(mode, accidents) {
-      var accident, latLng, latitude, longitude, marker, _i, _len, _results;
+      var accident, accidentKeyToMode, key, latLng, latitude, longitude, marker, markers, _, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
       this.clearAccidents(mode);
       if (accidents.length === 0) return;
       this.markerArrays[mode] = [];
-      _results = [];
       for (_i = 0, _len = accidents.length; _i < _len; _i++) {
         accident = accidents[_i];
         latitude = accident.Latitude;
@@ -375,10 +418,34 @@
           position: latLng,
           flat: true
         });
+        marker.accidentUniqueKey = "" + latitude + "|" + longitude + "|" + accident.Time;
         this.markerArrays[mode].push(marker);
-        _results.push(marker.setMap(this.map));
       }
-      return _results;
+      accidentKeyToMode = {};
+      _ref = this.markerArrays;
+      for (mode in _ref) {
+        markers = _ref[mode];
+        for (_j = 0, _len2 = markers.length; _j < _len2; _j++) {
+          marker = markers[_j];
+          key = marker.accidentUniqueKey;
+          if ((accidentKeyToMode[key] != null) && accidentKeyToMode[key] !== mode) {
+            accidentKeyToMode[key] = 'both';
+          } else {
+            accidentKeyToMode[key] = mode;
+          }
+        }
+      }
+      _ref2 = this.markerArrays;
+      for (_ in _ref2) {
+        markers = _ref2[_];
+        for (_k = 0, _len3 = markers.length; _k < _len3; _k++) {
+          marker = markers[_k];
+          key = marker.accidentUniqueKey;
+          marker.accidentPath = accidentKeyToMode[key];
+        }
+      }
+      this.clusterer.addMarkers(this.markerArrays[mode], true);
+      return this.clusterer.repaint();
     };
 
     AccidentsMarkerRenderer.prototype.render = function() {};
