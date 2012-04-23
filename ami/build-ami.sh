@@ -5,7 +5,7 @@
 set -x
 
 DIR=`dirname $0`
-FILELIST="$DIR/FILES"
+FILELIST="$DIR/files/FILES"
 
 UBUNTU_IMAGE_BASENAME='oneiric-server-cloudimg-amd64.img'
 UBUNTU_IMAGE_ARCHIVE_BASENAME='oneiric-server-cloudimg-amd64.tar.gz'
@@ -44,9 +44,6 @@ done
 sudo chown -R 1000:1000 "$MOUNT_DIR"/opt/bikefile
 
 sudo chroot "$MOUNT_DIR" update-rc.d bikefile_uwsgi defaults 80 80
-sudo rm -f "$MOUNT_DIR/etc/nginx/sites-enabled/bikefile"
-sudo chroot "$MOUNT_DIR" ln -sf /etc/nginx/sites-available/bikefile /etc/nginx/sites-enabled/bikefile
-sudo rm -f "$MOUNT_DIR"/etc/nginx/sites-enabled/default
 
 sudo chroot "$MOUNT_DIR" /usr/bin/env `cat "$DIR"/locale` locale-gen $LANG
 
@@ -62,7 +59,10 @@ sudo chroot "$MOUNT_DIR" apt-get install \
   bind9-host \
   openssh-server \
 
-sudo cp "$DIR"/postgresql.conf "$MOUNT_DIR"/etc/postgresql/9.1/main
+sudo rm -f "$MOUNT_DIR"/etc/nginx/sites-enabled/default
+sudo chroot "$MOUNT_DIR" ln -sf /etc/nginx/sites-available/bikefile /etc/nginx/sites-enabled/bikefile
+
+sudo cp "$DIR"/files/postgresql.conf "$MOUNT_DIR"/etc/postgresql/9.1/main
 sudo chown root:root "$MOUNT_DIR"/etc/postgresql/9.1/main/postgresql.conf
 
 # Clean up

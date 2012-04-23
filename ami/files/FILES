@@ -1,0 +1,10 @@
+../backend/wsgi_server.py /opt/bikefile/backend/wsgi_server.py
+../frontend/web /opt/bikefile/frontend
+./files/bikefile-data.psql /opt/bikefile/bikefile-data.psql
+./files/bikefile-init.sh /opt/bikefile/init.sh
+./files/uwsgi.ini /opt/bikefile/backend/uwsgi.ini
+./files/nginx-virtual.conf /etc/nginx/sites-available/bikefile
+./files/uwsgi-ini-script.sh /etc/init.d/bikefile_uwsgi
+./files/authorized_keys /home/openfile/.ssh/authorized_keys
+./files/set-hostname-to-ip.sh /etc/dhcp/dhclient-exit-hooks.d/set_hostname_to_ip
+./files/locale /etc/default/locale

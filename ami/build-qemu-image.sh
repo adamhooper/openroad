@@ -16,7 +16,7 @@ sudo vmbuilder qemu ubuntu \
   --flavour=virtual \
   --rootsize=1024 \
   --optsize=1024 \
-  --copy="$DIRNAME/FILES" \
+  --copy="$DIRNAME/files/FILES" \
   --firstboot="$FIRSTBOOT" \
   --install-mirror=http://127.0.0.1:3142/ubuntu \
   --addpkg=postgresql-9.1-postgis \
