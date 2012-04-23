@@ -3,7 +3,8 @@
   <head>
     <title>Plot your bike path</title>
     <link rel="stylesheet" type="text/css" href="jquery.jqplot.min.css" />
-    <link href='http://fonts.googleapis.com/css?family=PT+Sans+Narrow:400,700' rel='stylesheet' type='text/css' />
+    <link rel="stylesheet" type="text/css" href="jquery-ui-1.8.19.custom.css" />
+    <link href="http://fonts.googleapis.com/css?family=PT+Sans+Narrow:400,700" rel="stylesheet" type="text/css" />
 
     <style type="text/css">
       html, body {
@@ -137,6 +138,116 @@
         height: 400px;
       }
 
+      div#details {
+        position: relative;
+        font-family: 'PT Sans Narrow', sans-serif;
+        color: #223b5d;
+      }
+
+      div#details h2 {
+        font-weight: normal;
+        margin: 0;
+        padding: 0;
+        line-height: 2;
+      }
+
+      div#details h2 a {
+        color: #223b5d;
+        text-decoration: none;
+      }
+
+      div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities {
+        position: absolute;
+        top: 0;
+        height: 5em;
+      }
+
+      div#details div.year {
+        left: 0;
+        right: 75%;
+      }
+
+      div#details div.year .slider {
+        margin-top: 1em;
+      }
+
+      div#details div.year .value {
+        text-align: center;
+        margin-top: 2em;
+      }
+
+      .ui-corner-all {
+        -moz-border-radius: .5em;
+        -webkit-border-radius: .5em;
+        -khtml-border-radius: .5em;
+        border-radius: .5em;
+      }
+
+      .ui-slider-horizontal {
+        height: 4px;
+        background: #223b5d;
+        border: none;
+        border-top: .4em solid white;
+        border-bottom: .4em solid white;
+        position: absolute;
+        left: .4em;
+        right: .4em;
+        margin: 0 4px 0 0;
+        font-size: 1em;
+        -moz-border-radius: 0;
+        -webkit-border-radius: 0;
+        -khtml-border-radius: 0;
+        border-radius: 0;
+      }
+
+      .ui-slider .ui-slider-range {
+        height: .8em;
+        top: -.4em;
+        font-size: 1em;
+        border: none;
+        margin-left: 2px;
+        border-top: 2px solid #223b5d;
+        border-bottom: 2px solid #223b5d;
+        background: #a2cd34;
+        z-index: 3;
+      }
+
+      .ui-slider .ui-slider-handle {
+        height: .8em;
+        top: -.4em;
+        width: .8em;
+        margin-left: -.4em;
+        border: 2px solid #223b5d;
+        background: #a2cd34;
+      }
+
+      .ui-slider > .ui-slider-handle {
+        cursor: w-resize;
+      }
+
+      .ui-slider > .ui-slider-handle + .ui-slider-handle {
+        cursor: e-resize;
+      }
+
+      div#details div.chart {
+        left: 25%;
+        right: 50%;
+      }
+
+      div#details div.data {
+        left: 50%;
+        right: 25%;
+      }
+
+      div#details div.other-cities {
+        left: 75%;
+        right: 0;
+      }
+
+      div#details div.worst-locations {
+        margin-top: 5em;
+      }
+
       h2 {
         font-size: 1em;
         cursor: pointer;
@@ -229,9 +340,25 @@
     </div>
     <div id="map"></div>
     <div id="summary"></div>
-    <div class="expander">
-      <h2>Accidents along these paths, per year</h2>
-      <div style="display: none;" id="chart"></div>
+    <div id="details" style="height: 5em; overflow: hidden;">
+      <div class="year">
+        <h2>Date range</h2>
+        <div class="slider"></div>
+        <div class="value"></div>
+      </div>
+      <div class="chart">
+        <h2><a href="#">View results by year</a></h2>
+      </div>
+      <div class="data">
+        <h2><a href="#">View accient reports</a></h2>
+      </div>
+      <div class="other-cities">
+        <h2><a href="#">Explore another city</a></h2>
+      </div>
+
+      <div class="worst-locations">
+        <h2>Most accident-prone locations along your route</h2>
+      </div>
     </div>
     <div class="expander">
       <h2>Detailed accident reports along these paths</h2>
@@ -248,6 +375,7 @@
     </ul>
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.7&sensor=true&key=AIzaSyDWrbWJ46ET44B2Z0UFdqsT3DbsZXKXuqU"></script>
     <script type="text/javascript" src="jquery-1.7.1.min.js"></script>
+    <script type="text/javascript" src="jquery-ui-1.8.19.custom.min.js"></script>
     <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="excanvas.min.js"></script><![endif]-->
     <script type="text/javascript" src="jquery.jqplot.min.js"></script>
     <script type="text/javascript" src="markerclusterer.js"></script>
@@ -283,6 +411,21 @@
       });
 
       $('div.expander').expander();
+
+      var $slider = $('div.year div.slider');
+      $slider.slider({ min: 2006, max: 2010, range: true, values: [ 2007, 2010 ], animate: true});
+      var updateYearValue = function() {
+        var min = $slider.slider('values', 0);
+        var max = $slider.slider('values', 1);
+
+        var s = '' + min + '–' + max;
+        if (min == max) s = '' + min;
+        $('div.year div.value').text(s);
+      };
+      updateYearValue();
+      $slider.on('slidechange', function(e, ui) {
+        updateYearValue();
+      });
     </script>
   </body>
 </html>
