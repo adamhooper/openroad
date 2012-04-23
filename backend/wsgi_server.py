@@ -17,7 +17,6 @@ M_PER_DEGREE = 110574.27 # very rough
 
 error_in_degrees2 = (ERROR_IN_M / M_PER_DEGREE)**2
 
-
 def distance_squared_from_segment_to_point(segment, point):
     p1, p2 = segment
     p = point
@@ -131,6 +130,12 @@ def _get_city(path_info):
 
 def application(env, start_response):
     city = _get_city(env['PATH_INFO'])
+
+    if env['PATH_INFO'] == '/status':
+        start_response('200 OK', [
+            ('Content-Type', 'text/plain; charset=UTF-8')
+        ])
+        return [ b'OK' ]
 
     if city is None:
         start_response('404 Not Found', [
