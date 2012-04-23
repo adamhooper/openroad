@@ -11,31 +11,55 @@ CITIES = {
     latitude: 49.2505,
     longitude: -123.1119,
     zoom: 12,
+    bounds: new google.maps.LatLngBounds(
+      new google.maps.LatLng(49.131859, -123.264954),
+      new google.maps.LatLng(49.352188, -122.985718)
+    ),
   },
   calgary: {
     latitude: 51.0451,
     longitude: -114.0569,
     zoom: 12,
+    bounds: new google.maps.LatLngBounds(
+      new google.maps.LatLng(50.842941, -114.613968),
+      new google.maps.LatLng(51.343868, -113.901817)
+    ),
   },
   toronto: {
     latitude: 43.6517,
     longitude: -79.3827,
     zoom: 13,
+    bounds: new google.maps.LatLngBounds(
+      new google.maps.LatLng(43.584740, -79.639297),
+      new google.maps.LatLng(43.855419, -79.115623)
+    ),
   },
   ottawa: {
     latitude: 45.4214,
     longitude: -75.6919,
     zoom: 12,
+    bounds: new google.maps.LatLngBounds(
+      new google.maps.LatLng(44.962002, -76.355766),
+      new google.maps.LatLng(45.536541, -75.246033)
+    ),
   },
   montreal: {
     latitude: 45.5081,
     longitude: -73.5550,
     zoom: 13,
+    bounds: new google.maps.LatLngBounds(
+      new google.maps.LatLng(45.413479, -73.976608),
+      new google.maps.LatLng(45.704788, -73.476418)
+    ),
   },
   halifax: {
     latitude: 44.6479,
     longitude: -63.5744,
     zoom: 12,
+    bounds: new google.maps.LatLngBounds(
+      new google.maps.LatLng(44.434570, -64.237190),
+      new google.maps.LatLng(45.276489, -62.160469)
+    ),
   },
 }
 
@@ -375,9 +399,42 @@ class Manager
     @map.setCenter(latlng)
     @map.setZoom(zoom)
 
+  getCityBounds: () ->
+    CITIES[@city].bounds
+
   setOrigin: (@origin) ->
+    if @origin
+      if !@originMarker?
+        @originMarker = new google.maps.Marker({
+          position: @origin,
+          map: @map
+        })
+      else
+        @originMarker.setPosition(@origin)
+    else
+      if @originMarker?
+        @originMarker.setMap(null)
+        delete @originMarker
+    this.updateDirections()
 
   setDestination: (@destination) ->
+    if @destination
+      if !@destinationMarker?
+        @destinationMarker = new google.maps.Marker({
+          position: @destination,
+          map: @map
+        })
+      else
+        @destinationMarker.setPosition(@destination)
+    else
+      if @destinationMarker?
+        @destinationMarker.setMap(null)
+        delete @destinationMarker
+    this.updateDirections()
+
+  updateDirections: () ->
+    if @origin? && @destination?
+      this.queryAndUpdateDirections()
 
   getLocationForRequest: (location) ->
     location
@@ -420,6 +477,7 @@ class Manager
         },
         preserveViewport: true,
         suppressInfoWindows: true,
+        suppressMarkers: true
       })
       @directionsRenderers[mode].bikefile_mode = mode
       _this = this
@@ -497,4 +555,131 @@ make_expander = (div) ->
       $inner.show()
 
 $.fn.expander = () ->
-  $.each this, () -> make_expander(this)
+  $.each(this, () -> make_expander(this))
+
+class AddressSearchForm
+  constructor: (form, @originOrDestination, @manager) ->
+    $form = $(form)
+    @$a = $form.find('a')
+    @aText = @$a.text()
+    @$input = $form.find('input[type=text]')
+    @$status = $form.find('div.status')
+    @$error = $form.find('div.error')
+    @lastAddressTyped = @$input.val()
+    @mapListener = undefined
+
+    $form.on 'submit', (e) =>
+      e.stopPropagation()
+      e.preventDefault()
+      this.onAddressTyped()
+
+    @$a.on 'click', (e) =>
+      $a = $(e.target)
+      e.stopPropagation()
+      e.preventDefault()
+      if @mapListener?
+        google.maps.event.removeListener(@mapListener)
+        @mapListener = undefined
+        this.setClickingOnMap(false)
+      else
+        @mapListener = google.maps.event.addListenerOnce(@manager.map, 'click', (e) =>
+          @mapListener = undefined
+          this.setClickingOnMap(false)
+          this.onAddressClicked(e.latLng)
+        )
+        this.setClickingOnMap(true)
+
+  setClickingOnMap: (clickingOnMap) ->
+    if clickingOnMap
+      @$a.text('Click a point on the map to choose it')
+      @$a.addClass('clicking')
+    else
+      @$a.text(@aText)
+      @$a.removeClass('clicking')
+
+  getGeocoder: () ->
+    @geocoder ||= new google.maps.Geocoder()
+
+  onAddressTyped: () ->
+    addressTyped = @$input.val()
+    return if addressTyped == @lastAddressTyped
+
+    this.setError(undefined)
+
+    if $.trim(addressTyped || '')
+      this.setStatus('Looking up address')
+      @lastAddressTyped = addressTyped
+      this.getGeocoder().geocode({
+        'address': addressTyped,
+        'bounds': @manager.getCityBounds(),
+      }, (results, status) =>
+        this.onAddressGeocoded(results, status)
+      )
+    else
+      this.setStatus(undefined)
+      this.setLatLng(undefined)
+
+  setStatus: (status) ->
+    @$status.text(status || '')
+    if status?
+      @$status.show()
+    else
+      @$status.hide()
+
+  setError: (error) ->
+    @$error.text(error || '')
+    if error?
+      @$error.show()
+    else
+      @$error.hide()
+
+  onAddressClicked: (latlng) ->
+    this.setLatLng(latlng)
+    this.setError(undefined)
+
+    if latlng?
+      this.setStatus('Finding address')
+      this.getGeocoder().geocode({
+        latLng: latlng
+      }, (results, status) =>
+        @$input.val('…')
+        this.onLatLngGeocoded(results, status)
+      )
+    else
+      @$input.val('')
+      this.setStatus(undefined)
+
+  setLatLng: (latlng) ->
+    if @originOrDestination == 'origin'
+      @manager.setOrigin(latlng)
+    else
+      @manager.setDestination(latlng)
+
+    if latlng?
+      bounds = @manager.map.getBounds()
+      if !bounds.contains(latlng)
+        bounds.extend(latlng)
+        @manager.map.fitBounds(bounds)
+
+  onAddressGeocoded: (results, status) ->
+    this.setStatus(undefined)
+    cityBounds = @manager.getCityBounds()
+    if status == google.maps.GeocoderStatus.ZERO_RESULTS or (
+        status == google.maps.GeocoderStatus.OK && !cityBounds.contains(results[0].geometry.location))
+      this.setError('Address not found')
+      this.setLatLng(null)
+    else if status == google.maps.GeocoderStatus.OK
+      this.setLatLng(results[0].geometry.location)
+    else
+      this.setError('Failed to look up address')
+      this.setLatLng(null)
+
+  onLatLngGeocoded: (results, status) ->
+    this.setStatus(undefined)
+    if status == google.maps.GeocoderStatus.OK
+      @$input.val(results[0].formatted_address)
+    else
+      @$input.val('(point on map)')
+
+$.fn.address_search_form = (originOrDestination, manager) ->
+  $.each(this, () -> new AddressSearchForm(this, originOrDestination, manager))

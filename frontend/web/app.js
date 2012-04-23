@@ -1,5 +1,5 @@
 (function() {
-  var AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, Manager, Renderer, SummaryRenderer, TrendChartRenderer, URL, make_expander, selectText,
+  var AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, Manager, Renderer, SummaryRenderer, TrendChartRenderer, URL, make_expander, selectText,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -15,32 +15,38 @@
     vancouver: {
       latitude: 49.2505,
       longitude: -123.1119,
-      zoom: 12
+      zoom: 12,
+      bounds: new google.maps.LatLngBounds(new google.maps.LatLng(49.131859, -123.264954), new google.maps.LatLng(49.352188, -122.985718))
     },
     calgary: {
       latitude: 51.0451,
       longitude: -114.0569,
-      zoom: 12
+      zoom: 12,
+      bounds: new google.maps.LatLngBounds(new google.maps.LatLng(50.842941, -114.613968), new google.maps.LatLng(51.343868, -113.901817))
     },
     toronto: {
       latitude: 43.6517,
       longitude: -79.3827,
-      zoom: 13
+      zoom: 13,
+      bounds: new google.maps.LatLngBounds(new google.maps.LatLng(43.584740, -79.639297), new google.maps.LatLng(43.855419, -79.115623))
     },
     ottawa: {
       latitude: 45.4214,
       longitude: -75.6919,
-      zoom: 12
+      zoom: 12,
+      bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.962002, -76.355766), new google.maps.LatLng(45.536541, -75.246033))
     },
     montreal: {
       latitude: 45.5081,
       longitude: -73.5550,
-      zoom: 13
+      zoom: 13,
+      bounds: new google.maps.LatLngBounds(new google.maps.LatLng(45.413479, -73.976608), new google.maps.LatLng(45.704788, -73.476418))
     },
     halifax: {
       latitude: 44.6479,
       longitude: -63.5744,
-      zoom: 12
+      zoom: 12,
+      bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.434570, -64.237190), new google.maps.LatLng(45.276489, -62.160469))
     }
   };
 
@@ -480,12 +486,54 @@
       return this.map.setZoom(zoom);
     };
 
+    Manager.prototype.getCityBounds = function() {
+      return CITIES[this.city].bounds;
+    };
+
     Manager.prototype.setOrigin = function(origin) {
       this.origin = origin;
+      if (this.origin) {
+        if (!(this.originMarker != null)) {
+          this.originMarker = new google.maps.Marker({
+            position: this.origin,
+            map: this.map
+          });
+        } else {
+          this.originMarker.setPosition(this.origin);
+        }
+      } else {
+        if (this.originMarker != null) {
+          this.originMarker.setMap(null);
+          delete this.originMarker;
+        }
+      }
+      return this.updateDirections();
     };
 
     Manager.prototype.setDestination = function(destination) {
       this.destination = destination;
+      if (this.destination) {
+        if (!(this.destinationMarker != null)) {
+          this.destinationMarker = new google.maps.Marker({
+            position: this.destination,
+            map: this.map
+          });
+        } else {
+          this.destinationMarker.setPosition(this.destination);
+        }
+      } else {
+        if (this.destinationMarker != null) {
+          this.destinationMarker.setMap(null);
+          delete this.destinationMarker;
+        }
+      }
+      return this.updateDirections();
+    };
+
+    Manager.prototype.updateDirections = function() {
+      if ((this.origin != null) && (this.destination != null)) {
+        return this.queryAndUpdateDirections();
+      }
     };
 
     Manager.prototype.getLocationForRequest = function(location) {
@@ -532,7 +580,8 @@
             strokeColor: color
           },
           preserveViewport: true,
-          suppressInfoWindows: true
+          suppressInfoWindows: true,
+          suppressMarkers: true
         });
         this.directionsRenderers[mode].bikefile_mode = mode;
         _this = this;
@@ -631,6 +680,167 @@
   $.fn.expander = function() {
     return $.each(this, function() {
       return make_expander(this);
+    });
+  };
+
+  AddressSearchForm = (function() {
+
+    function AddressSearchForm(form, originOrDestination, manager) {
+      var $form,
+        _this = this;
+      this.originOrDestination = originOrDestination;
+      this.manager = manager;
+      $form = $(form);
+      this.$a = $form.find('a');
+      this.aText = this.$a.text();
+      this.$input = $form.find('input[type=text]');
+      this.$status = $form.find('div.status');
+      this.$error = $form.find('div.error');
+      this.lastAddressTyped = this.$input.val();
+      this.mapListener = void 0;
+      $form.on('submit', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        return _this.onAddressTyped();
+      });
+      this.$a.on('click', function(e) {
+        var $a;
+        $a = $(e.target);
+        e.stopPropagation();
+        e.preventDefault();
+        if (_this.mapListener != null) {
+          google.maps.event.removeListener(_this.mapListener);
+          _this.mapListener = void 0;
+          return _this.setClickingOnMap(false);
+        } else {
+          _this.mapListener = google.maps.event.addListenerOnce(_this.manager.map, 'click', function(e) {
+            _this.mapListener = void 0;
+            _this.setClickingOnMap(false);
+            return _this.onAddressClicked(e.latLng);
+          });
+          return _this.setClickingOnMap(true);
+        }
+      });
+    }
+
+    AddressSearchForm.prototype.setClickingOnMap = function(clickingOnMap) {
+      if (clickingOnMap) {
+        this.$a.text('Click a point on the map to choose it');
+        return this.$a.addClass('clicking');
+      } else {
+        this.$a.text(this.aText);
+        return this.$a.removeClass('clicking');
+      }
+    };
+
+    AddressSearchForm.prototype.getGeocoder = function() {
+      return this.geocoder || (this.geocoder = new google.maps.Geocoder());
+    };
+
+    AddressSearchForm.prototype.onAddressTyped = function() {
+      var addressTyped,
+        _this = this;
+      addressTyped = this.$input.val();
+      if (addressTyped === this.lastAddressTyped) return;
+      this.setError(void 0);
+      if ($.trim(addressTyped || '')) {
+        this.setStatus('Looking up address');
+        this.lastAddressTyped = addressTyped;
+        return this.getGeocoder().geocode({
+          'address': addressTyped,
+          'bounds': this.manager.getCityBounds()
+        }, function(results, status) {
+          return _this.onAddressGeocoded(results, status);
+        });
+      } else {
+        this.setStatus(void 0);
+        return this.setLatLng(void 0);
+      }
+    };
+
+    AddressSearchForm.prototype.setStatus = function(status) {
+      this.$status.text(status || '');
+      if (status != null) {
+        return this.$status.show();
+      } else {
+        return this.$status.hide();
+      }
+    };
+
+    AddressSearchForm.prototype.setError = function(error) {
+      this.$error.text(error || '');
+      if (error != null) {
+        return this.$error.show();
+      } else {
+        return this.$error.hide();
+      }
+    };
+
+    AddressSearchForm.prototype.onAddressClicked = function(latlng) {
+      var _this = this;
+      this.setLatLng(latlng);
+      this.setError(void 0);
+      if (latlng != null) {
+        this.setStatus('Finding address');
+        return this.getGeocoder().geocode({
+          latLng: latlng
+        }, function(results, status) {
+          _this.$input.val('…');
+          return _this.onLatLngGeocoded(results, status);
+        });
+      } else {
+        this.$input.val('');
+        return this.setStatus(void 0);
+      }
+    };
+
+    AddressSearchForm.prototype.setLatLng = function(latlng) {
+      var bounds;
+      if (this.originOrDestination === 'origin') {
+        this.manager.setOrigin(latlng);
+      } else {
+        this.manager.setDestination(latlng);
+      }
+      if (latlng != null) {
+        bounds = this.manager.map.getBounds();
+        if (!bounds.contains(latlng)) {
+          bounds.extend(latlng);
+          return this.manager.map.fitBounds(bounds);
+        }
+      }
+    };
+
+    AddressSearchForm.prototype.onAddressGeocoded = function(results, status) {
+      var cityBounds;
+      this.setStatus(void 0);
+      cityBounds = this.manager.getCityBounds();
+      if (status === google.maps.GeocoderStatus.ZERO_RESULTS || (status === google.maps.GeocoderStatus.OK && !cityBounds.contains(results[0].geometry.location))) {
+        this.setError('Address not found');
+        return this.setLatLng(null);
+      } else if (status === google.maps.GeocoderStatus.OK) {
+        return this.setLatLng(results[0].geometry.location);
+      } else {
+        this.setError('Failed to look up address');
+        return this.setLatLng(null);
+      }
+    };
+
+    AddressSearchForm.prototype.onLatLngGeocoded = function(results, status) {
+      this.setStatus(void 0);
+      if (status === google.maps.GeocoderStatus.OK) {
+        return this.$input.val(results[0].formatted_address);
+      } else {
+        return this.$input.val('(point on map)');
+      }
+    };
+
+    return AddressSearchForm;
+
+  })();
+
+  $.fn.address_search_form = function(originOrDestination, manager) {
+    return $.each(this, function() {
+      return new AddressSearchForm(this, originOrDestination, manager);
     });
   };
 

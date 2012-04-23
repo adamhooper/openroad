@@ -5,6 +5,10 @@
     <link rel="stylesheet" type="text/css" href="jquery.jqplot.min.css" />
 
     <style type="text/css">
+      html, body {
+        width: 600px;
+      }
+
       h1 {
         text-align: center;
       }
@@ -32,6 +36,14 @@
         list-style: none;
       }
 
+      form.origin-destination a {
+        text-decoration: none;
+      }
+
+      form.origin-destination a.clicking {
+        color: #999;
+      }
+
       ul#city li {
         display: inline-block;
         width: 16.5%;
@@ -39,18 +51,6 @@
 
       ul#city li.selected {
         font-weight: bold;
-      }
-
-      form#origin-destination {
-        width: 100%;
-        margin: .5em 0;
-        padding: 0;
-      }
-
-      form#origin-destination div {
-        width: 49%;
-        display: inline-block;
-        text-align: center;
       }
 
       div#map {
@@ -84,13 +84,19 @@
   </head>
   <body>
     <h1><span class="driving">Drive</span> or <span class="bicycling">bike</span>?</h1>
-    <form id="origin-destination">
-      <div class="origin">
-        <input type="submit" value="Set origin" />
-      </div>
-      <div class="destination">
-        <input type="submit" value="Set destination" />
-      </div>
+    <form id="origin" class="origin-destination">
+      <input type="text" placeholder="example: 99 1st Ave" />
+      <input type="submit" value="Set" />
+      <div class="status" style="display: none;"></div>
+      <div class="error" style="display: none;"></div>
+      <a href="#">or click here to choose a point on the map</a>
+    </form>
+    <form id="destination" class="origin-destination">
+      <input type="text" placeholder="example: 12 2nd St" />
+      <input type="submit" value="Set" />
+      <div class="status" style="display: none;"></div>
+      <div class="error" style="display: none;"></div>
+      <a href="#">or click here to choose a point on the map</a>
     </form>
     <div id="map"></div>
     <div id="summary"></div>
@@ -125,59 +131,16 @@
         zoom: 1
       });
 
+      var bikeLayer = new google.maps.BicyclingLayer();
+      bikeLayer.setMap(map);
+
       var summaryDiv = document.getElementById('summary');
       var chartDiv = document.getElementById('chart');
       var dataDiv = document.getElementById('data');
       var manager = new Manager(map, undefined, undefined, 'toronto', summaryDiv, chartDiv, dataDiv);
 
-      var bikeLayer = new google.maps.BicyclingLayer();
-      bikeLayer.setMap(map);
-
-      var $origin = $('form#origin-destination div.origin input');
-      var $destination = $('form#origin-destination div.destination input');
-      var origin = undefined;
-      var destination = undefined;
-      var setting = 'origin';
-
-      var setOriginOrDestination = function(latLng) {
-        if (setting == 'origin') {
-          origin = latLng;
-          manager.setOrigin(latLng);
-        } else {
-          destination = latLng;
-          manager.setDestination(latLng);
-        }
-
-        toggleOriginDestination();
-
-        if (origin && destination) {
-          manager.queryAndUpdateDirections();
-        }
-      };
-
-      var refreshOriginDestination = function() {
-        $origin.attr('disabled', false);
-        $destination.attr('disabled', false);
-
-        if (setting == 'origin') {
-          $origin.val('Click on map to set origin');
-          $origin.attr('disabled', true);
-          $destination.val('Set destination');
-        } else {
-          $origin.val('Set origin');
-          $destination.val('Click on map to set destination');
-          $destination.attr('disabled', true);
-        }
-      };
-
-      var toggleOriginDestination = function() {
-        if (setting == 'origin') {
-          setting = 'destination';
-        } else {
-          setting = 'origin';
-        }
-        refreshOriginDestination();
-      };
+      $('form#origin').address_search_form('origin', manager);
+      $('form#destination').address_search_form('destination', manager);
 
       $('#city a').click(function(e) {
         e.preventDefault();
@@ -189,26 +152,6 @@
         $li.addClass('selected');
         manager.setCity($a.attr('href').split(/\#/)[1])
       });
-
-      $origin.click(function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        setting = 'origin';
-        refreshOriginDestination();
-      });
-
-      $destination.click(function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        setting = 'destination';
-        refreshOriginDestination();
-      });
-
-      google.maps.event.addListener(map, 'click', function(e) {
-        setOriginOrDestination(e.latLng)
-      });
-
-      refreshOriginDestination();
 
       $('div.expander').expander();
     </script>
