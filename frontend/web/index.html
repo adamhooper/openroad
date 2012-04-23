@@ -3,14 +3,138 @@
   <head>
     <title>Plot your bike path</title>
     <link rel="stylesheet" type="text/css" href="jquery.jqplot.min.css" />
+    <link href='http://fonts.googleapis.com/css?family=PT+Sans+Narrow:400,700' rel='stylesheet' type='text/css' />
 
     <style type="text/css">
       html, body {
-        width: 600px;
+        width: 950px;
       }
 
       h1 {
+        margin: 0;
+        padding: 0;
         text-align: center;
+        font-size: 2.75em;
+        font-family: 'PT Sans Narrow', sans-serif;
+        font-weight: bold;
+        text-transform: uppercase;
+        color: #a1cde5;
+        line-height: 1;
+        height: 1em;
+        position: relative;
+      }
+
+      h1 span.bg1, h1 span.bg2 {
+        display: block;
+        position: absolute;
+        top: 50%;
+        bottom: 0;
+        margin-top: -5px;
+        width: 50%;
+      }
+
+      h1 span.bg1 {
+        left: 0;
+        border-top: 10px solid #f9f298;
+      }
+
+      h1 span.bg2 {
+        right: 0;
+        border-top: 10px dashed #f9f298;
+      }
+
+      h1 span.text {
+        display: block;
+        position: relative;
+      }
+
+      h1 span.open {
+        padding: 0 20px 0 10px;
+        background: white;
+      }
+
+      h1 span.road {
+        padding: 0 10px 0 20px;
+        background: white;
+      }
+
+      p.blurb {
+        font-family: 'PT Sans Narrow', sans-serif;
+        color: #4d4d4d;
+        font-size: .9em;
+      }
+
+      div.forms {
+        position: relative;
+      }
+
+      div.origin-destination, form.mode {
+        font-family: 'PT Sans Narrow', sans-serif;
+        color: #223b5d;
+        margin-bottom: .25em;
+      }
+
+      div.origin-destination h2, form.mode h2 {
+        font-weight: normal;
+        margin: 0;
+        padding: 0;
+      }
+
+      form.origin-destination {
+        margin: 0;
+        padding: 0;
+        position: relative;
+      }
+
+      form.origin-destination label {
+        font-family: 'PT Sans Narrow', sans-serif;
+        color: #a1cde5;
+        float: left;
+        width: 3em;
+      }
+
+      form.origin-destination div.status, form.origin-destination div.error {
+        color: red;
+        position: absolute;
+        left: 25em;
+        top: 2px;
+        font-size: .8em;
+        line-height: 1.55;
+        margin-left: -8em;
+        text-align: right;
+        width: 8em;
+      }
+
+      form.origin-destination input.text {
+        font-family: 'PT Sans Narrow', sans-serif;
+        border: 2px solid #223b5d;
+        background: #f9f298;
+        padding-left: 5px;
+        padding-right: 5px;
+        width: 25em;
+      }
+
+      form.origin-destination a {
+        text-decoration: none;
+        color: #223b5d;
+        font-size: .8em;
+        line-height: 1.25;
+      }
+
+      form.origin-destination a.clicking {
+        color: #a1cde5;
+      }
+
+      form.mode {
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: 13em;
+      }
+
+      div#map {
+        width: 100%;
+        height: 400px;
       }
 
       h2 {
@@ -36,14 +160,6 @@
         list-style: none;
       }
 
-      form.origin-destination a {
-        text-decoration: none;
-      }
-
-      form.origin-destination a.clicking {
-        color: #999;
-      }
-
       ul#city li {
         display: inline-block;
         width: 16.5%;
@@ -51,11 +167,6 @@
 
       ul#city li.selected {
         font-weight: bold;
-      }
-
-      div#map {
-        width: 100%;
-        height: 500px;
       }
 
       div#data {
@@ -83,21 +194,39 @@
     </style>
   </head>
   <body>
-    <h1><span class="driving">Drive</span> or <span class="bicycling">bike</span>?</h1>
-    <form id="origin" class="origin-destination">
-      <input type="text" placeholder="example: 99 1st Ave" />
-      <input type="submit" value="Set" />
-      <div class="status" style="display: none;"></div>
-      <div class="error" style="display: none;"></div>
-      <a href="#">or click here to choose a point on the map</a>
-    </form>
-    <form id="destination" class="origin-destination">
-      <input type="text" placeholder="example: 12 2nd St" />
-      <input type="submit" value="Set" />
-      <div class="status" style="display: none;"></div>
-      <div class="error" style="display: none;"></div>
-      <a href="#">or click here to choose a point on the map</a>
-    </form>
+    <h1><span class="bg1"></span><span class="bg2"></span><span class="bg3"></span><span class="text"><span class="open">Open</span><span class="road">Road</span></span></h1>
+
+    <p class="blurb">We've asked the authorities to list every accident they've recorded. Choose a route and we'll show you the spots where car and bicycle collide.</p>
+
+    <div class="forms">
+      <div class="origin-destination">
+        <h2>Set your route</h2>
+        <form id="origin" class="origin-destination">
+          <label for="origin-text">Start</label>
+          <input class="text" id="origin-text" type="text" placeholder="example: 99 1st Ave" />
+          <input type="submit" value="Set" />
+          <div class="status" style="display: none;"></div>
+          <div class="error" style="display: none;"></div>
+          <a href="#">or choose from map</a>
+        </form>
+        <form id="destination" class="origin-destination">
+          <label for="destination-text">Finish</label>
+          <input class="text" id="destination-text" type="text" placeholder="example: 12 2nd St" />
+          <input type="submit" value="Set" />
+          <div class="status" style="display: none;"></div>
+          <div class="error" style="display: none;"></div>
+          <a href="#">or choose from map</a>
+        </form>
+      </div>
+      <form class="mode">
+        <h2>Set your transport</h2>
+        <div class="options">
+          <label class="bicycling"><input type="radio" name="mode" value="bicycling" checked="checked" />bike</label>
+          <label class="driving"><input type="radio" name="mode" value="driving" />car</label>
+          <label class="both"><input type="radio" name="mode" value="both" />both</label>
+        </div>
+      </form>
+    </div>
     <div id="map"></div>
     <div id="summary"></div>
     <div class="expander">
