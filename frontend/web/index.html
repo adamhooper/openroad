@@ -164,7 +164,7 @@
 
       div#details div.year {
         left: 0;
-        right: 75%;
+        right: 60%;
       }
 
       div#details div.year .slider {
@@ -174,6 +174,35 @@
       div#details div.year .value {
         text-align: center;
         margin-top: 2em;
+      }
+
+      div#worst-locations ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      div#worst-locations li {
+        margin: 0;
+        padding: 0;
+        width: 30%;
+        display: inline-block;
+      }
+
+      div#worst-locations .image-container {
+        position: relative;
+        height: 0;
+        overflow: hidden;
+        padding-bottom: 56.25%;
+        max-width: 640px;
+      }
+
+      div#worst-locations img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
       }
 
       .ui-corner-all {
@@ -230,22 +259,26 @@
       }
 
       div#details div.chart {
-        left: 25%;
-        right: 50%;
+        text-align: center;
+        left: 40%;
+        right: 40%;
       }
 
       div#details div.data {
-        left: 50%;
-        right: 25%;
+        text-align: center;
+        left: 60%;
+        right: 20%;
       }
 
       div#details div.other-cities {
-        left: 75%;
+        text-align: center;
+        left: 80%;
         right: 0;
       }
 
-      div#details div.worst-locations {
-        margin-top: 5em;
+      div#details div#worst-locations {
+        margin-top: 8em;
+        border-top: 2px solid #223b5d;
       }
 
       h2 {
@@ -307,7 +340,7 @@
   <body>
     <h1><span class="bg1"></span><span class="bg2"></span><span class="bg3"></span><span class="text"><span class="open">Open</span><span class="road">Road</span></span></h1>
 
-    <p class="blurb">We've asked the authorities to list every accident they've recorded. Choose a route and we'll show you the spots where car and bicycle collide.</p>
+    <p class="blurb">We've asked the authorities to list every accident they've recorded. Choose a route and we'll show you where car and bicycle collide.</p>
 
     <div class="forms">
       <div class="origin-destination">
@@ -340,7 +373,7 @@
     </div>
     <div id="map"></div>
     <div id="summary"></div>
-    <div id="details" style="height: 5em; overflow: hidden;">
+    <div id="details" style="overflow: hidden;">
       <div class="year">
         <h2>Date range</h2>
         <div class="slider"></div>
@@ -356,12 +389,11 @@
         <h2><a href="#">Explore another city</a></h2>
       </div>
 
-      <div class="worst-locations">
-        <h2>Most accident-prone locations along your route</h2>
-      </div>
+      <div id="worst-locations"></div>
     </div>
     <div class="expander">
       <h2>Detailed accident reports along these paths</h2>
+      <div id="chart"></div>
       <div style="display: none;" id="data"></div>
     </div>
     <p>Choose your city:</p>
@@ -394,7 +426,8 @@
       var summaryDiv = document.getElementById('summary');
       var chartDiv = document.getElementById('chart');
       var dataDiv = document.getElementById('data');
-      var manager = new Manager(map, undefined, undefined, 'toronto', summaryDiv, chartDiv, dataDiv);
+      var worstLocationsDiv = document.getElementById('worst-locations');
+      var manager = new Manager(map, undefined, undefined, 'toronto', summaryDiv, chartDiv, dataDiv, worstLocationsDiv);
 
       $('form#origin').address_search_form('origin', manager);
       $('form#destination').address_search_form('destination', manager);

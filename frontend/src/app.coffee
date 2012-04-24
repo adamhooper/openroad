@@ -63,6 +63,9 @@ CITIES = {
   },
 }
 
+WORST_ACCIDENT_RADIUS = 7 # metres.
+# Two accidents can be double this apart and count as one location.
+
 selectText = (element) ->
   if document.body.createTextRange?
     range = document.body.createTextRange()
@@ -209,6 +212,7 @@ class AccidentsTableRenderer extends Renderer
 
 class TrendChartRenderer
   constructor: (@div) ->
+    @series = {}
 
   clearAccidents: (mode = undefined) ->
     if !mode?
@@ -382,8 +386,166 @@ class AccidentsMarkerRenderer
   render: () ->
     # nothing. See addAccidents()
 
+class WorstLocationsRenderer
+  constructor: (@div) ->
+    @topGroups = {}
+    @maxLocations = 3
+
+  clearAccidents: (mode = undefined) ->
+    if !mode?
+      @topGroups = {}
+    else
+      delete @topGroups[mode]
+
+  addAccidents: (mode, accidents) ->
+    objs = []
+    results = []
+
+    # We define a "spot" as a [x-7..x+7] stretch along the "distance_along_path" axis.
+
+    # 1. Calculate all those stretches, in a sparse array indexed by meter
+    for accident in accidents
+      distance_along_path = + ('' + accident.distance_along_path).replace(/[^\d]*/g, '')
+
+      for d in [(distance_along_path - WORST_ACCIDENT_RADIUS) .. (distance_along_path + WORST_ACCIDENT_RADIUS)]
+        continue if d < 0
+        objs[d] ||= { d: d, a: [] }
+        objs[d].a.push(accident)
+
+    # 2. Calculate results
+    # Select the largest slot, and repeat as needed
+    sorted = objs.slice()
+    while results.length < @maxLocations
+      sorted.sort((a, b) -> b.a.length - a.a.length)
+      break if sorted.length == 0 or sorted[0].a.length == 0
+
+      topGroup = sorted[0].a.slice()
+
+      results.push(topGroup)
+
+      # Remove these accidents from our "worst accident spot" contendors
+      for accident in topGroup
+        distance_along_path = + ('' + accident.distance_along_path).replace(/[^\d]*/g, '')
+
+        for d in [(distance_along_path - WORST_ACCIDENT_RADIUS) .. (distance_along_path + WORST_ACCIDENT_RADIUS)]
+          as = objs[d].a
+          for i, a of as
+            if a.distance_along_path == accident.distance_along_path # doesn't have to be equal
+              as.splice(i, 1)
+
+    @topGroups[mode] = results
+
+  getTopGroups: () ->
+    idToGroup = {}
+    topGroupsTotal = []
+
+    for mode, topGroups of @topGroups
+      for topGroup in topGroups
+        # If two groups (one per mode) contain the same accident, merge them.
+        totalTopGroup = undefined
+
+        # Search for the duplicates
+        for accident in topGroup
+          if idToGroup[accident.id]?
+            totalTopGroup = idToGroup[accident.id]
+            totalTopGroup.mode = 'both'
+            break
+
+        # If we're not merging, initialize an empty array
+        if !totalTopGroup?
+          totalTopGroup = { mode: mode, accidents: [] }
+          topGroupsTotal.push(totalTopGroup)
+
+        # Merge/copy into the array
+        for accident in topGroup
+          if !idToGroup[accident.id]?
+            idToGroup[accident.id] = totalTopGroup
+            totalTopGroup.accidents.push(accident)
+
+    topGroupsTotal.sort((a, b) -> b.length - a.length)
+
+    topGroupsTotal.slice(0, 3)
+
+  groupToSpot: (group) ->
+    sumLatitude = 0
+    sumLongitude = 0
+    for accident in group.accidents
+      sumLatitude += accident.Latitude
+      sumLongitude += accident.Longitude
+
+    {
+      Latitude: sumLatitude / group.accidents.length,
+      Longitude: sumLongitude / group.accidents.length,
+      mode: group.mode,
+      accidents: group.accidents
+    }
+
+  getTopSpots: () ->
+    (this.groupToSpot(group) for group in this.getTopGroups())
+
+  getHeadingString: (topSpots) ->
+    locations = (topSpots.length == 1 && 'location' || 'locations')
+    routes = (@topGroups.bicycling? && @topGroups.driving? && 'routes' || 'route')
+
+    "Most accident-prone #{locations} along your #{routes}"
+
+  getTopSpotString: (topSpot) ->
+    accidents = topSpot.accidents.length > 0 && 'accidents' || 'accident'
+    if topSpot.mode == 'both'
+      "#{topSpot.accidents.count} #{accidents} along your driving and bicycling routes"
+    else
+      "#{topSpot.accidents.count} #{accidents} along your #{topSpot.mode} route"
+
+  getGeocoder: () ->
+    @geocoder ||= new google.maps.Geocoder()
+
+  renderTopSpot: (topSpot) ->
+    $html = $('<li><div class="image-container"><img src="" alt="" /></div><div class="address"></div><div class="count"></div></li>')
+    $html.find('.address').text("#{topSpot.Latitude},#{topSpot.Longitude}")
+    $html.find('.count').text(this.getTopSpotString(topSpot))
+
+    this.getGeocoder().geocode({
+      latLng: new google.maps.LatLng(topSpot.Latitude, topSpot.Longitude)
+    }, (results, status) =>
+      if status == google.maps.GeocoderStatus.OK
+        $html.find('.address').text(results[0].address_components[0].long_name)
+    )
+
+    # Wait for the image to be drawn so we know its height
+    window.setTimeout(() ->
+      $img = $html.find('img')
+      url = "http://maps.googleapis.com/maps/api/streetview?sensor=false&size=#{$img.width()}x#{$img.height()}&location=#{topSpot.Latitude},#{topSpot.Longitude}"
+      $img.attr('src', url)
+    , 50)
+
+    $html
+
+  render: () ->
+    $div = $(@div)
+
+    topSpots = this.getTopSpots()
+    if !topSpots.length
+      $div.hide()
+      return
+
+    h2String = this.getHeadingString(topSpots)
+
+    $div.empty()
+    $h2 = $('<h2></h2>')
+    $h2.text(h2String)
+    $div.append($h2)
+
+    $ul = $('<ul></ul>')
+
+    for topSpot, i in topSpots
+      $li = this.renderTopSpot(topSpot, i)
+      $li.addClass("top-spot-#{i}")
+      $ul.append($li)
+
+    $div.append($ul)
+
 class Manager
-  constructor: (@map, @origin, @destination, @city, summaryDiv, chartDiv, dataDiv) ->
+  constructor: (@map, @origin, @destination, @city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv) ->
     this.setCity(@city)
     @summaryRenderer = new SummaryRenderer(summaryDiv)
     @summaryRenderer.setStatus('no-input')
@@ -391,6 +553,7 @@ class Manager
     @tableRenderer = new AccidentsTableRenderer(dataDiv)
     @chartRenderer = new TrendChartRenderer(chartDiv)
     @markerRenderer = new AccidentsMarkerRenderer(@map)
+    @worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv)
 
   setCity: (@city) ->
     zoomData = CITIES[@city]
@@ -530,17 +693,20 @@ class Manager
     @tableRenderer.clearAccidents(mode)
     @chartRenderer.clearAccidents(mode)
     @markerRenderer.clearAccidents(mode)
+    @worstLocationsRenderer.clearAccidents(mode)
 
   handleNewData: (mode, data) ->
     @summaryRenderer.addAccidents(mode, data)
     @tableRenderer.addAccidents(mode, data)
     @chartRenderer.addAccidents(mode, data)
     @markerRenderer.addAccidents(mode, data)
+    @worstLocationsRenderer.addAccidents(mode, data)
 
     @summaryRenderer.render()
     @tableRenderer.render()
     @chartRenderer.render()
     @markerRenderer.render()
+    @worstLocationsRenderer.render()
 
 window.Manager = Manager
 
@@ -639,10 +805,10 @@ class AddressSearchForm
 
     if latlng?
       this.setStatus('Finding address')
+      @$input.val('…')
       this.getGeocoder().geocode({
         latLng: latlng
       }, (results, status) =>
-        @$input.val('…')
         this.onLatLngGeocoded(results, status)
       )
     else
