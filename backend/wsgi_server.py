@@ -161,9 +161,9 @@ def application(env, start_response):
 
     # TODO: add bounds WHERE clause, using GiST
     q = '''SELECT
-            *,
+            city.*,
             (ST_Line_Locate_Point(path.path, ST_ClosestPoint(path.path, "Location"::geometry)) * ST_Length(path.path::geography))::INT AS distance_along_path
-        FROM %s
+        FROM %s city
         INNER JOIN (SELECT %s AS path) path ON 1=1
         WHERE ST_DWithin("Location", path.path::geography, %d)
           AND "Time" > '2001-01-01 00:00:00'
@@ -184,7 +184,6 @@ def application(env, start_response):
             if hasattr(v, 'strftime'):
                 record[k] = v.strftime('%Y-%m-%d %H:%M:%S')
         record.pop('Location')
-        record.pop('path')
 
     ustring = json.dumps(response_data, ensure_ascii=False, check_circular=False, separators=(',', ':'))
     utf8string = ustring.encode('utf-8')
