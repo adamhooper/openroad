@@ -135,7 +135,7 @@ DATE_REGEX = re.compile(r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})')
 def format_datetime_string(s, default, time):
     m = DATE_REGEX.match(s)
     if m:
-        return '%s-%s-%s %s' % (m.year, m.month, m.day, time)
+        return '%s-%s-%s %s' % (m.group('year'), m.group('month'), m.group('day'), time)
     else:
         return '%s %s' % (default, time)
 
@@ -166,7 +166,7 @@ def application(env, start_response):
         start_response('404 Not Found', [
             ('Content-Type', 'text/plain; charset=UTF-8')
         ])
-        return [ b'You must POST a parameter named "encoded_polyline"' ]
+        return [ b'You must POST a parameter named "encoded_polyline", and you may optionally pass "min_date" and "max_date" in YYYY-MM-DD format.' ]
 
     polyline = simplify_line(polyline)
 

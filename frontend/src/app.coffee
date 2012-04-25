@@ -1,4 +1,6 @@
 URL = 'http://localhost:8000/%{city}'
+DEFAULT_MIN_YEAR = 2007
+DEFAULT_MAX_YEAR = 2011
 
 COLORS = {
   driving: '#cccc00',
@@ -11,6 +13,8 @@ CITIES = {
     latitude: 49.2505,
     longitude: -123.1119,
     zoom: 12,
+    minYear: 2006,
+    maxYear: 2010,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(49.131859, -123.264954),
       new google.maps.LatLng(49.352188, -122.985718)
@@ -20,6 +24,8 @@ CITIES = {
     latitude: 51.0451,
     longitude: -114.0569,
     zoom: 12,
+    minYear: 1996,
+    maxYear: 2011,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(50.842941, -114.613968),
       new google.maps.LatLng(51.343868, -113.901817)
@@ -29,6 +35,8 @@ CITIES = {
     latitude: 43.6517,
     longitude: -79.3827,
     zoom: 13,
+    minYear: 1986,
+    maxYear: 2010,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(43.584740, -79.639297),
       new google.maps.LatLng(43.855419, -79.115623)
@@ -38,6 +46,8 @@ CITIES = {
     latitude: 45.4214,
     longitude: -75.6919,
     zoom: 12,
+    minYear: 2001,
+    maxYear: 2010,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(44.962002, -76.355766),
       new google.maps.LatLng(45.536541, -75.246033)
@@ -47,6 +57,8 @@ CITIES = {
     latitude: 45.5081,
     longitude: -73.5550,
     zoom: 13,
+    minYear: 2006,
+    maxYear: 2010,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(45.413479, -73.976608),
       new google.maps.LatLng(45.704788, -73.476418)
@@ -56,6 +68,8 @@ CITIES = {
     latitude: 44.6479,
     longitude: -63.5744,
     zoom: 12,
+    minYear: 2007,
+    maxYear: 2010,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(44.434570, -64.237190),
       new google.maps.LatLng(45.276489, -62.160469)
@@ -77,6 +91,177 @@ selectText = (element) ->
     range.selectNodeContents(element)
     selection.removeAllRanges()
     selection.addRange(range)
+
+class State
+  constructor: (options = {}) ->
+    @city = options.city || 'toronto'
+    @mode = 'bicycling'
+    @origin = options.origin
+    @destination = options.destination
+    @routes = {} # keyed by 'bicycling' and 'driving'
+    @accidents = {} # keyed by 'bicycling' and 'driving'
+    @listeners = {}
+    # @routes is always set before @accidents
+
+  onChange: (key, callback) ->
+    @listeners[key] ||= []
+    @listeners[key].push(callback)
+
+  _changed: (key, arg1 = undefined, arg2 = undefined) ->
+    callbacks = @listeners[key] || []
+    for callback in callbacks
+      callback(arg1, arg2)
+
+  setCity: (city) ->
+    this.clearAccidents()
+    this.clearRoutes()
+    this.setDestination(undefined)
+    this.setOrigin(undefined)
+    @city = city
+    this._changed('city', @city)
+
+  setMode: (mode) ->
+    @mode = mode
+    this._changed('mode', @mode)
+
+  setOrigin: (latlng) ->
+    return if latlng == @origin
+    this.clearAccidents()
+    this.clearRoutes()
+    @origin = latlng
+    this._changed('origin', @origin)
+
+  setDestination: (latlng) ->
+    return if latlng == @destination
+    this.clearAccidents()
+    this.clearRoutes()
+    @destination = latlng
+    this._changed('destination', @destination)
+
+  setRoute: (key, directions) ->
+    this.clearAccidents()
+    this.routes[key] = directions
+    this._changed('routes', key, directions)
+
+  clearRoutes: (key=undefined) ->
+    if key
+      delete this.routes[key]
+      this._changed('routes', key, undefined)
+    else
+      this.routes = {}
+      this._changed('routes')
+
+  setAccidents: (key, accidents) ->
+    this.accidents[key] = accidents
+    this._changed('accidents', key, accidents)
+
+  clearAccidents: (key=undefined) ->
+    if key
+      delete this.accidents[key]
+      this._changed('accidents', key, undefined)
+    else
+      this.accidents = {}
+      this._changed('accidents')
+
+class RouteFinder
+  constructor: (@state) ->
+    @state.onChange('city', () => this.refresh())
+    @state.onChange('origin', () => this.refresh())
+    @state.onChange('destination', () => this.refresh())
+    @state.onChange('mode', () => this.refresh())
+    @_activeRequestIds = {}
+    @_activeRequestIds[google.maps.TravelMode.BICYCLING] = 0
+    @_activeRequestIds[google.maps.TravelMode.DRIVING] = 0
+
+  _getCityBounds: () ->
+    CITIES[@state.city].bounds
+
+  _modeToGoogleModes: (mode) ->
+    {
+      driving: [ google.maps.TravelMode.DRIVING ],
+      bicycling: [ google.maps.TravelMode.BICYCLING ],
+      both: [ google.maps.TravelMode.BICYCLING, google.maps.TravelMode.DRIVING ],
+    }[mode]
+
+  _googleModeToMode: (mode) ->
+    if mode == google.maps.TravelMode.DRIVING
+      return 'driving'
+    else
+      return 'bicycling'
+
+  _getDirectionsRequestForMode: (mode) ->
+    for googleMode in _modeToGoogleModes(mode)
+      this._getDirectionsRequestForGoogleMode(googleMode)
+
+  _getDirectionsRequestForGoogleMode: (googleMode) ->
+    {
+      origin: @state.origin,
+      destination: @state.destination,
+      travelMode: googleMode,
+      provideRouteAlternatives: false,
+      unitSystem: google.maps.UnitSystem.METRIC,
+      region: 'ca',
+    }
+
+  _getDirectionsService: () ->
+    @directionsService ||= new google.maps.DirectionsService()
+
+  refresh: () ->
+    if !@state.origin? || !@state.destination?
+      @state.clearRoutes()
+      return
+
+    service = this._getDirectionsService()
+    for googleMode in this._modeToGoogleModes(@state.mode)
+      request = this._getDirectionsRequestForGoogleMode(googleMode)
+      requestId = (@_activeRequestIds[googleMode] += 1)
+      service.route request, (result, status) =>
+        this._receiveDirectionsResponse(googleMode, requestId, result, status)
+
+  _receiveDirectionsResponse: (googleMode, requestId, result, status) ->
+    return if @_activeRequestIds[googleMode] != requestId
+    return if status != google.maps.DirectionsStatus.OK # FIXME handle error
+
+    mode = this._googleModeToMode(googleMode)
+    @state.setRoute(mode, result)
+
+class RouteRenderer
+  constructor: (@state, map) ->
+    @renderers = {}
+    @_blockingStateChanges = {}
+    for mode in [ 'bicycling', 'driving' ]
+      @_blockingStateChanges[mode] = false
+      @renderers[mode] = this._createDirectionsRendererForMode(mode, map)
+
+    @state.onChange 'routes', (mode, route) =>
+      # mode is undefined if we're clearing both
+      for mode in (mode && [mode] || ['bicycling', 'driving'])
+        continue if @_blockingStateChanges[mode]
+        @_blockingStateChanges[mode] = true
+        if !route?
+          @renderers[mode].setMap(null)
+        else
+          @renderers[mode].setDirections(route)
+          @renderers[mode].setMap(map)
+        @_blockingStateChanges[mode] = false
+
+  _createDirectionsRendererForMode: (mode) ->
+    color = COLORS[mode]
+
+    renderer = new google.maps.DirectionsRenderer({
+      draggable: true,
+      polylineOptions: { strokeColor: color },
+      preserveViewport: true,
+      suppressInfoWindows: true,
+      suppressMarkers: true,
+      suppressBicyclingLayer: true,
+    })
+    google.maps.event.addListener renderer, 'directions_changed', () =>
+      return if @_blockingStateChanges[mode]
+      @_blockingStateChanges[mode] = true
+      @state.setRoute(mode, renderer.getDirections())
+      @_blockingStateChanges[mode] = false
+    renderer
 
 class ChartSeriesMaker
   constructor: () ->
@@ -403,23 +588,23 @@ class WorstLocationsRenderer
 
     # We define a "spot" as a [x-7..x+7] stretch along the "distance_along_path" axis.
 
-    # 1. Calculate all those stretches, in a sparse array indexed by meter
+    # 1. Calculate all those stretches, in a sparse array of arrays, indexed by meter
     for accident in accidents
       distance_along_path = + ('' + accident.distance_along_path).replace(/[^\d]*/g, '')
 
       for d in [(distance_along_path - WORST_ACCIDENT_RADIUS) .. (distance_along_path + WORST_ACCIDENT_RADIUS)]
         continue if d < 0
-        objs[d] ||= { d: d, a: [] }
-        objs[d].a.push(accident)
+        objs[d] ||= []
+        objs[d].push(accident)
 
     # 2. Calculate results
     # Select the largest slot, and repeat as needed
     sorted = objs.slice()
     while results.length < @maxLocations
-      sorted.sort((a, b) -> b.a.length - a.a.length)
-      break if sorted.length == 0 or sorted[0].a.length == 0
+      sorted.sort((a, b) -> b.length - a.length)
+      break if sorted.length == 0 or sorted[0].length == 0
 
-      topGroup = sorted[0].a.slice()
+      topGroup = sorted[0].slice()
 
       results.push(topGroup)
 
@@ -428,10 +613,13 @@ class WorstLocationsRenderer
         distance_along_path = + ('' + accident.distance_along_path).replace(/[^\d]*/g, '')
 
         for d in [(distance_along_path - WORST_ACCIDENT_RADIUS) .. (distance_along_path + WORST_ACCIDENT_RADIUS)]
-          as = objs[d].a
-          for i, a of as
-            if a.distance_along_path == accident.distance_along_path # doesn't have to be equal
-              as.splice(i, 1)
+          continue if d < 0 || d >= objs.length
+          for a, i in objs[d]
+            if a.distance_along_path == accident.distance_along_path
+              # We don't need to check for equality: if one accident at this
+              # distance matches, they'll all match and they'll all be removed
+              objs[d].splice(i, 1)
+              break
 
     @topGroups[mode] = results
 
@@ -545,8 +733,21 @@ class WorstLocationsRenderer
     $div.append($ul)
 
 class Manager
-  constructor: (@map, @origin, @destination, @city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv) ->
+  constructor: (@map, @origin, @destination, @city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv, options=undefined) ->
     this.setCity(@city)
+    this.setMinYear(options? && options.minYear? && options.minYear || DEFAULT_MIN_YEAR)
+    this.setMaxYear(options? && options.maxYear? && options.maxYear || DEFAULT_MAX_YEAR)
+
+    @state = new State({
+      city: @city,
+      origin: @origin,
+      destination: @destination,
+    })
+    routeFinder = new RouteFinder(@state)
+    routeRenderer = new RouteRenderer(@state, @map)
+    @state.onChange 'routes', (mode, route) =>
+      this.queryAndUpdatePolylineRelatedLayer(mode, route)
+
     @summaryRenderer = new SummaryRenderer(summaryDiv)
     @summaryRenderer.setStatus('no-input')
     @summaryRenderer.render()
@@ -561,6 +762,23 @@ class Manager
     zoom = zoomData.zoom
     @map.setCenter(latlng)
     @map.setZoom(zoom)
+
+  getCityYearRange: () ->
+    cityData = CITIES[@city]
+    [ cityData.minYear, cityData.maxYear ]
+
+  getYearRange: () ->
+    [ + @minDate.split(/-/)[0], + @maxDate.split(/-/)[0] ]
+
+  setMinYear: (year) ->
+    cityData = CITIES[@city]
+    year = cityData.minYear if year < cityData.minYear
+    @minDate = "#{year}-01-01"
+
+  setMaxYear: (year) ->
+    cityData = CITIES[@city]
+    year = cityData.maxYear if year > cityData.maxYear
+    @maxDate = "#{year}-12-31"
 
   getCityBounds: () ->
     CITIES[@city].bounds
@@ -578,7 +796,7 @@ class Manager
       if @originMarker?
         @originMarker.setMap(null)
         delete @originMarker
-    this.updateDirections()
+    @state.setOrigin(@origin)
 
   setDestination: (@destination) ->
     if @destination
@@ -593,79 +811,7 @@ class Manager
       if @destinationMarker?
         @destinationMarker.setMap(null)
         delete @destinationMarker
-    this.updateDirections()
-
-  updateDirections: () ->
-    if @origin? && @destination?
-      this.queryAndUpdateDirections()
-
-  getLocationForRequest: (location) ->
-    location
-
-  getOriginForRequest: () ->
-    this.getLocationForRequest(@origin)
-
-  getDestinationForRequest: () ->
-    this.getLocationForRequest(@destination)
-
-  getDirectionsRequest: (mode) ->
-    googleMode = {
-      driving: google.maps.TravelMode.DRIVING,
-      bicycling: google.maps.TravelMode.BICYCLING
-    }[mode]
-
-    {
-      origin: this.getOriginForRequest(),
-      destination: this.getDestinationForRequest(),
-      travelMode: googleMode,
-      provideRouteAlternatives: false,
-      unitSystem: google.maps.UnitSystem.METRIC,
-      region: 'ca'
-    }
-
-  getDirectionsService: () ->
-    @directionsService ||= new google.maps.DirectionsService()
-
-  getDirectionsRenderer: (mode) ->
-    @directionsRenderers ||= {}
-
-    if !@directionsRenderers[mode]?
-      color = COLORS[mode]
-
-      @directionsRenderers[mode] = new google.maps.DirectionsRenderer({
-        draggable: true,
-        map: @map,
-        polylineOptions: {
-          strokeColor: color
-        },
-        preserveViewport: true,
-        suppressInfoWindows: true,
-        suppressMarkers: true
-      })
-      @directionsRenderers[mode].bikefile_mode = mode
-      _this = this
-      google.maps.event.addListener @directionsRenderers[mode], 'directions_changed', (e) ->
-        _this.queryAndUpdatePolylineRelatedLayer(mode, this.directions)
-
-    return @directionsRenderers[mode]
-
-  queryAndUpdateDirectionsForMode: (mode) ->
-    # All these are cached...
-    request = this.getDirectionsRequest(mode)
-    renderer = this.getDirectionsRenderer(mode)
-    service = this.getDirectionsService()
-
-    service.route request, (result, status) ->
-      if status == google.maps.DirectionsStatus.OK
-        renderer.setDirections(result)
-
-  queryAndUpdateDirections: () ->
-    this.clearOldData()
-
-    @summaryRenderer.setStatus('querying')
-
-    this.queryAndUpdateDirectionsForMode('bicycling')
-    this.queryAndUpdateDirectionsForMode('driving')
+    @state.setDestination(@destination)
 
   queryAndUpdatePolylineRelatedLayer: (mode, googleDirectionsResult) ->
     @lastRequests ||= {}
@@ -675,6 +821,7 @@ class Manager
       delete @lastRequests[mode]
 
     this.clearOldData(mode) # just in case?
+    return unless googleDirectionsResult?
 
     encoded_polyline = googleDirectionsResult.routes[0].overview_polyline.points
     postData = { encoded_polyline: encoded_polyline }

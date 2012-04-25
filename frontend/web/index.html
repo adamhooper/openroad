@@ -446,7 +446,9 @@
       $('div.expander').expander();
 
       var $slider = $('div.year div.slider');
-      $slider.slider({ min: 2006, max: 2010, range: true, values: [ 2007, 2010 ], animate: true});
+      var cityYearRange = manager.getCityYearRange();
+      var yearRange = manager.getYearRange();
+      $slider.slider({ min: cityYearRange[0], max: cityYearRange[1], range: true, values: yearRange, animate: true});
       var updateYearValue = function() {
         var min = $slider.slider('values', 0);
         var max = $slider.slider('values', 1);

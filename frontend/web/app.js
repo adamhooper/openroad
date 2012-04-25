@@ -1,9 +1,13 @@
 (function() {
-  var AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, Manager, Renderer, SummaryRenderer, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText,
+  var AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, Renderer, RouteFinder, RouteRenderer, State, SummaryRenderer, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   URL = 'http://localhost:8000/%{city}';
+
+  DEFAULT_MIN_YEAR = 2007;
+
+  DEFAULT_MAX_YEAR = 2011;
 
   COLORS = {
     driving: '#cccc00',
@@ -16,36 +20,48 @@
       latitude: 49.2505,
       longitude: -123.1119,
       zoom: 12,
+      minYear: 2006,
+      maxYear: 2010,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(49.131859, -123.264954), new google.maps.LatLng(49.352188, -122.985718))
     },
     calgary: {
       latitude: 51.0451,
       longitude: -114.0569,
       zoom: 12,
+      minYear: 1996,
+      maxYear: 2011,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(50.842941, -114.613968), new google.maps.LatLng(51.343868, -113.901817))
     },
     toronto: {
       latitude: 43.6517,
       longitude: -79.3827,
       zoom: 13,
+      minYear: 1986,
+      maxYear: 2010,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(43.584740, -79.639297), new google.maps.LatLng(43.855419, -79.115623))
     },
     ottawa: {
       latitude: 45.4214,
       longitude: -75.6919,
       zoom: 12,
+      minYear: 2001,
+      maxYear: 2010,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.962002, -76.355766), new google.maps.LatLng(45.536541, -75.246033))
     },
     montreal: {
       latitude: 45.5081,
       longitude: -73.5550,
       zoom: 13,
+      minYear: 2006,
+      maxYear: 2010,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(45.413479, -73.976608), new google.maps.LatLng(45.704788, -73.476418))
     },
     halifax: {
       latitude: 44.6479,
       longitude: -63.5744,
       zoom: 12,
+      minYear: 2007,
+      maxYear: 2010,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.434570, -64.237190), new google.maps.LatLng(45.276489, -62.160469))
     }
   };
@@ -66,6 +82,267 @@
       return selection.addRange(range);
     }
   };
+
+  State = (function() {
+
+    function State(options) {
+      if (options == null) options = {};
+      this.city = options.city || 'toronto';
+      this.mode = 'bicycling';
+      this.origin = options.origin;
+      this.destination = options.destination;
+      this.routes = {};
+      this.accidents = {};
+      this.listeners = {};
+    }
+
+    State.prototype.onChange = function(key, callback) {
+      var _base;
+      (_base = this.listeners)[key] || (_base[key] = []);
+      return this.listeners[key].push(callback);
+    };
+
+    State.prototype._changed = function(key, arg1, arg2) {
+      var callback, callbacks, _i, _len, _results;
+      if (arg1 == null) arg1 = void 0;
+      if (arg2 == null) arg2 = void 0;
+      callbacks = this.listeners[key] || [];
+      _results = [];
+      for (_i = 0, _len = callbacks.length; _i < _len; _i++) {
+        callback = callbacks[_i];
+        _results.push(callback(arg1, arg2));
+      }
+      return _results;
+    };
+
+    State.prototype.setCity = function(city) {
+      this.clearAccidents();
+      this.clearRoutes();
+      this.setDestination(void 0);
+      this.setOrigin(void 0);
+      this.city = city;
+      return this._changed('city', this.city);
+    };
+
+    State.prototype.setMode = function(mode) {
+      this.mode = mode;
+      return this._changed('mode', this.mode);
+    };
+
+    State.prototype.setOrigin = function(latlng) {
+      if (latlng === this.origin) return;
+      this.clearAccidents();
+      this.clearRoutes();
+      this.origin = latlng;
+      return this._changed('origin', this.origin);
+    };
+
+    State.prototype.setDestination = function(latlng) {
+      if (latlng === this.destination) return;
+      this.clearAccidents();
+      this.clearRoutes();
+      this.destination = latlng;
+      return this._changed('destination', this.destination);
+    };
+
+    State.prototype.setRoute = function(key, directions) {
+      this.clearAccidents();
+      this.routes[key] = directions;
+      return this._changed('routes', key, directions);
+    };
+
+    State.prototype.clearRoutes = function(key) {
+      if (key == null) key = void 0;
+      if (key) {
+        delete this.routes[key];
+        return this._changed('routes', key, void 0);
+      } else {
+        this.routes = {};
+        return this._changed('routes');
+      }
+    };
+
+    State.prototype.setAccidents = function(key, accidents) {
+      this.accidents[key] = accidents;
+      return this._changed('accidents', key, accidents);
+    };
+
+    State.prototype.clearAccidents = function(key) {
+      if (key == null) key = void 0;
+      if (key) {
+        delete this.accidents[key];
+        return this._changed('accidents', key, void 0);
+      } else {
+        this.accidents = {};
+        return this._changed('accidents');
+      }
+    };
+
+    return State;
+
+  })();
+
+  RouteFinder = (function() {
+
+    function RouteFinder(state) {
+      var _this = this;
+      this.state = state;
+      this.state.onChange('city', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('origin', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('destination', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('mode', function() {
+        return _this.refresh();
+      });
+      this._activeRequestIds = {};
+      this._activeRequestIds[google.maps.TravelMode.BICYCLING] = 0;
+      this._activeRequestIds[google.maps.TravelMode.DRIVING] = 0;
+    }
+
+    RouteFinder.prototype._getCityBounds = function() {
+      return CITIES[this.state.city].bounds;
+    };
+
+    RouteFinder.prototype._modeToGoogleModes = function(mode) {
+      return {
+        driving: [google.maps.TravelMode.DRIVING],
+        bicycling: [google.maps.TravelMode.BICYCLING],
+        both: [google.maps.TravelMode.BICYCLING, google.maps.TravelMode.DRIVING]
+      }[mode];
+    };
+
+    RouteFinder.prototype._googleModeToMode = function(mode) {
+      if (mode === google.maps.TravelMode.DRIVING) {
+        return 'driving';
+      } else {
+        return 'bicycling';
+      }
+    };
+
+    RouteFinder.prototype._getDirectionsRequestForMode = function(mode) {
+      var googleMode, _i, _len, _ref, _results;
+      _ref = _modeToGoogleModes(mode);
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        googleMode = _ref[_i];
+        _results.push(this._getDirectionsRequestForGoogleMode(googleMode));
+      }
+      return _results;
+    };
+
+    RouteFinder.prototype._getDirectionsRequestForGoogleMode = function(googleMode) {
+      return {
+        origin: this.state.origin,
+        destination: this.state.destination,
+        travelMode: googleMode,
+        provideRouteAlternatives: false,
+        unitSystem: google.maps.UnitSystem.METRIC,
+        region: 'ca'
+      };
+    };
+
+    RouteFinder.prototype._getDirectionsService = function() {
+      return this.directionsService || (this.directionsService = new google.maps.DirectionsService());
+    };
+
+    RouteFinder.prototype.refresh = function() {
+      var googleMode, request, requestId, service, _i, _len, _ref, _results,
+        _this = this;
+      if (!(this.state.origin != null) || !(this.state.destination != null)) {
+        this.state.clearRoutes();
+        return;
+      }
+      service = this._getDirectionsService();
+      _ref = this._modeToGoogleModes(this.state.mode);
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        googleMode = _ref[_i];
+        request = this._getDirectionsRequestForGoogleMode(googleMode);
+        requestId = (this._activeRequestIds[googleMode] += 1);
+        _results.push(service.route(request, function(result, status) {
+          return _this._receiveDirectionsResponse(googleMode, requestId, result, status);
+        }));
+      }
+      return _results;
+    };
+
+    RouteFinder.prototype._receiveDirectionsResponse = function(googleMode, requestId, result, status) {
+      var mode;
+      if (this._activeRequestIds[googleMode] !== requestId) return;
+      if (status !== google.maps.DirectionsStatus.OK) return;
+      mode = this._googleModeToMode(googleMode);
+      return this.state.setRoute(mode, result);
+    };
+
+    return RouteFinder;
+
+  })();
+
+  RouteRenderer = (function() {
+
+    function RouteRenderer(state, map) {
+      var mode, _i, _len, _ref,
+        _this = this;
+      this.state = state;
+      this.renderers = {};
+      this._blockingStateChanges = {};
+      _ref = ['bicycling', 'driving'];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mode = _ref[_i];
+        this._blockingStateChanges[mode] = false;
+        this.renderers[mode] = this._createDirectionsRendererForMode(mode, map);
+      }
+      this.state.onChange('routes', function(mode, route) {
+        var _j, _len2, _ref2, _results;
+        _ref2 = mode && [mode] || ['bicycling', 'driving'];
+        _results = [];
+        for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+          mode = _ref2[_j];
+          if (_this._blockingStateChanges[mode]) continue;
+          _this._blockingStateChanges[mode] = true;
+          if (!(route != null)) {
+            _this.renderers[mode].setMap(null);
+          } else {
+            _this.renderers[mode].setDirections(route);
+            _this.renderers[mode].setMap(map);
+          }
+          _results.push(_this._blockingStateChanges[mode] = false);
+        }
+        return _results;
+      });
+    }
+
+    RouteRenderer.prototype._createDirectionsRendererForMode = function(mode) {
+      var color, renderer,
+        _this = this;
+      color = COLORS[mode];
+      renderer = new google.maps.DirectionsRenderer({
+        draggable: true,
+        polylineOptions: {
+          strokeColor: color
+        },
+        preserveViewport: true,
+        suppressInfoWindows: true,
+        suppressMarkers: true,
+        suppressBicyclingLayer: true
+      });
+      google.maps.event.addListener(renderer, 'directions_changed', function() {
+        if (_this._blockingStateChanges[mode]) return;
+        _this._blockingStateChanges[mode] = true;
+        _this.state.setRoute(mode, renderer.getDirections());
+        return _this._blockingStateChanges[mode] = false;
+      });
+      return renderer;
+    };
+
+    return RouteRenderer;
+
+  })();
 
   ChartSeriesMaker = (function() {
 
@@ -481,7 +758,7 @@
     };
 
     WorstLocationsRenderer.prototype.addAccidents = function(mode, accidents) {
-      var a, accident, as, d, distance_along_path, i, objs, results, sorted, topGroup, _i, _j, _len, _len2, _ref, _ref2, _ref3, _ref4;
+      var a, accident, d, distance_along_path, i, objs, results, sorted, topGroup, _i, _j, _len, _len2, _len3, _ref, _ref2, _ref3, _ref4, _ref5;
       objs = [];
       results = [];
       for (_i = 0, _len = accidents.length; _i < _len; _i++) {
@@ -489,30 +766,29 @@
         distance_along_path = +('' + accident.distance_along_path).replace(/[^\d]*/g, '');
         for (d = _ref = distance_along_path - WORST_ACCIDENT_RADIUS, _ref2 = distance_along_path + WORST_ACCIDENT_RADIUS; _ref <= _ref2 ? d <= _ref2 : d >= _ref2; _ref <= _ref2 ? d++ : d--) {
           if (d < 0) continue;
-          objs[d] || (objs[d] = {
-            d: d,
-            a: []
-          });
-          objs[d].a.push(accident);
+          objs[d] || (objs[d] = []);
+          objs[d].push(accident);
         }
       }
       sorted = objs.slice();
       while (results.length < this.maxLocations) {
         sorted.sort(function(a, b) {
-          return b.a.length - a.a.length;
+          return b.length - a.length;
         });
-        if (sorted.length === 0 || sorted[0].a.length === 0) break;
-        topGroup = sorted[0].a.slice();
+        if (sorted.length === 0 || sorted[0].length === 0) break;
+        topGroup = sorted[0].slice();
         results.push(topGroup);
         for (_j = 0, _len2 = topGroup.length; _j < _len2; _j++) {
           accident = topGroup[_j];
           distance_along_path = +('' + accident.distance_along_path).replace(/[^\d]*/g, '');
           for (d = _ref3 = distance_along_path - WORST_ACCIDENT_RADIUS, _ref4 = distance_along_path + WORST_ACCIDENT_RADIUS; _ref3 <= _ref4 ? d <= _ref4 : d >= _ref4; _ref3 <= _ref4 ? d++ : d--) {
-            as = objs[d].a;
-            for (i in as) {
-              a = as[i];
+            if (d < 0 || d >= objs.length) continue;
+            _ref5 = objs[d];
+            for (i = 0, _len3 = _ref5.length; i < _len3; i++) {
+              a = _ref5[i];
               if (a.distance_along_path === accident.distance_along_path) {
-                as.splice(i, 1);
+                objs[d].splice(i, 1);
+                break;
               }
             }
           }
@@ -662,12 +938,27 @@
 
   Manager = (function() {
 
-    function Manager(map, origin, destination, city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv) {
+    function Manager(map, origin, destination, city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv, options) {
+      var routeFinder, routeRenderer,
+        _this = this;
       this.map = map;
       this.origin = origin;
       this.destination = destination;
       this.city = city;
+      if (options == null) options = void 0;
       this.setCity(this.city);
+      this.setMinYear((options != null) && (options.minYear != null) && options.minYear || DEFAULT_MIN_YEAR);
+      this.setMaxYear((options != null) && (options.maxYear != null) && options.maxYear || DEFAULT_MAX_YEAR);
+      this.state = new State({
+        city: this.city,
+        origin: this.origin,
+        destination: this.destination
+      });
+      routeFinder = new RouteFinder(this.state);
+      routeRenderer = new RouteRenderer(this.state, this.map);
+      this.state.onChange('routes', function(mode, route) {
+        return _this.queryAndUpdatePolylineRelatedLayer(mode, route);
+      });
       this.summaryRenderer = new SummaryRenderer(summaryDiv);
       this.summaryRenderer.setStatus('no-input');
       this.summaryRenderer.render();
@@ -685,6 +976,30 @@
       zoom = zoomData.zoom;
       this.map.setCenter(latlng);
       return this.map.setZoom(zoom);
+    };
+
+    Manager.prototype.getCityYearRange = function() {
+      var cityData;
+      cityData = CITIES[this.city];
+      return [cityData.minYear, cityData.maxYear];
+    };
+
+    Manager.prototype.getYearRange = function() {
+      return [+this.minDate.split(/-/)[0], +this.maxDate.split(/-/)[0]];
+    };
+
+    Manager.prototype.setMinYear = function(year) {
+      var cityData;
+      cityData = CITIES[this.city];
+      if (year < cityData.minYear) year = cityData.minYear;
+      return this.minDate = "" + year + "-01-01";
+    };
+
+    Manager.prototype.setMaxYear = function(year) {
+      var cityData;
+      cityData = CITIES[this.city];
+      if (year > cityData.maxYear) year = cityData.maxYear;
+      return this.maxDate = "" + year + "-12-31";
     };
 
     Manager.prototype.getCityBounds = function() {
@@ -708,7 +1023,7 @@
           delete this.originMarker;
         }
       }
-      return this.updateDirections();
+      return this.state.setOrigin(this.origin);
     };
 
     Manager.prototype.setDestination = function(destination) {
@@ -728,88 +1043,7 @@
           delete this.destinationMarker;
         }
       }
-      return this.updateDirections();
-    };
-
-    Manager.prototype.updateDirections = function() {
-      if ((this.origin != null) && (this.destination != null)) {
-        return this.queryAndUpdateDirections();
-      }
-    };
-
-    Manager.prototype.getLocationForRequest = function(location) {
-      return location;
-    };
-
-    Manager.prototype.getOriginForRequest = function() {
-      return this.getLocationForRequest(this.origin);
-    };
-
-    Manager.prototype.getDestinationForRequest = function() {
-      return this.getLocationForRequest(this.destination);
-    };
-
-    Manager.prototype.getDirectionsRequest = function(mode) {
-      var googleMode;
-      googleMode = {
-        driving: google.maps.TravelMode.DRIVING,
-        bicycling: google.maps.TravelMode.BICYCLING
-      }[mode];
-      return {
-        origin: this.getOriginForRequest(),
-        destination: this.getDestinationForRequest(),
-        travelMode: googleMode,
-        provideRouteAlternatives: false,
-        unitSystem: google.maps.UnitSystem.METRIC,
-        region: 'ca'
-      };
-    };
-
-    Manager.prototype.getDirectionsService = function() {
-      return this.directionsService || (this.directionsService = new google.maps.DirectionsService());
-    };
-
-    Manager.prototype.getDirectionsRenderer = function(mode) {
-      var color, _this;
-      this.directionsRenderers || (this.directionsRenderers = {});
-      if (!(this.directionsRenderers[mode] != null)) {
-        color = COLORS[mode];
-        this.directionsRenderers[mode] = new google.maps.DirectionsRenderer({
-          draggable: true,
-          map: this.map,
-          polylineOptions: {
-            strokeColor: color
-          },
-          preserveViewport: true,
-          suppressInfoWindows: true,
-          suppressMarkers: true
-        });
-        this.directionsRenderers[mode].bikefile_mode = mode;
-        _this = this;
-        google.maps.event.addListener(this.directionsRenderers[mode], 'directions_changed', function(e) {
-          return _this.queryAndUpdatePolylineRelatedLayer(mode, this.directions);
-        });
-      }
-      return this.directionsRenderers[mode];
-    };
-
-    Manager.prototype.queryAndUpdateDirectionsForMode = function(mode) {
-      var renderer, request, service;
-      request = this.getDirectionsRequest(mode);
-      renderer = this.getDirectionsRenderer(mode);
-      service = this.getDirectionsService();
-      return service.route(request, function(result, status) {
-        if (status === google.maps.DirectionsStatus.OK) {
-          return renderer.setDirections(result);
-        }
-      });
-    };
-
-    Manager.prototype.queryAndUpdateDirections = function() {
-      this.clearOldData();
-      this.summaryRenderer.setStatus('querying');
-      this.queryAndUpdateDirectionsForMode('bicycling');
-      return this.queryAndUpdateDirectionsForMode('driving');
+      return this.state.setDestination(this.destination);
     };
 
     Manager.prototype.queryAndUpdatePolylineRelatedLayer = function(mode, googleDirectionsResult) {
@@ -821,6 +1055,7 @@
         delete this.lastRequests[mode];
       }
       this.clearOldData(mode);
+      if (googleDirectionsResult == null) return;
       encoded_polyline = googleDirectionsResult.routes[0].overview_polyline.points;
       postData = {
         encoded_polyline: encoded_polyline
