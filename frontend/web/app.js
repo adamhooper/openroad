@@ -1,5 +1,5 @@
 (function() {
-  var AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, Renderer, RouteFinder, RouteRenderer, State, SummaryRenderer, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText,
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, Renderer, RouteFinder, RouteRenderer, State, SummaryRenderer, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -91,6 +91,8 @@
       this.mode = 'bicycling';
       this.origin = options.origin;
       this.destination = options.destination;
+      this.minYear = this._clampYear('min', options.minYear || DEFAULT_MIN_YEAR);
+      this.maxYear = this._clampYear('max', options.maxYear || DEFAULT_MAX_YEAR);
       this.routes = {};
       this.accidents = {};
       this.listeners = {};
@@ -143,6 +145,36 @@
       this.clearRoutes();
       this.destination = latlng;
       return this._changed('destination', this.destination);
+    };
+
+    State.prototype._clampYear = function(minOrMax, year) {
+      var clamp, property;
+      property = "" + minOrMax + "Year";
+      clamp = CITIES[this.city][property];
+      if (!year) return clamp;
+      if (minOrMax === 'min' && year < clamp) return clamp;
+      if (minOrMax === 'max' && year > clamp) return clamp;
+      return year;
+    };
+
+    State.prototype.setMinYear = function(year) {
+      var clampedYear;
+      clampedYear = this._clampYear('min', year);
+      if (clampedYear !== this.minYear) {
+        this.clearAccidents();
+        this.minYear = clampedYear;
+        return this._changed('minYear', this.minYear);
+      }
+    };
+
+    State.prototype.setMaxYear = function(year) {
+      var clampedYear;
+      clampedYear = this._clampYear('max', year);
+      if (clampedYear !== this.maxYear) {
+        this.clearAccidents();
+        this.maxYear = clampedYear;
+        return this._changed('maxYear', this.maxYear);
+      }
     };
 
     State.prototype.setRoute = function(key, directions) {
@@ -341,6 +373,66 @@
     };
 
     return RouteRenderer;
+
+  })();
+
+  AccidentFinder = (function() {
+
+    function AccidentFinder(state) {
+      var _this = this;
+      this.state = state;
+      this._requests = {};
+      this.state.onChange('routes', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('minYear', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('maxYear', function() {
+        return _this.refresh();
+      });
+    }
+
+    AccidentFinder.prototype.refresh = function() {
+      var mode, _i, _len, _ref, _results;
+      _ref = this.state.mode !== 'both' && [this.state.mode] || ['bicycling', 'driving'];
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mode = _ref[_i];
+        _results.push(this._refreshAccidents(mode));
+      }
+      return _results;
+    };
+
+    AccidentFinder.prototype._refreshAccidents = function(mode) {
+      var encodedPolyline, postData, route, url,
+        _this = this;
+      if (this._requests[mode] != null) {
+        this._requests[mode].abort();
+        delete this._requests[mode];
+      }
+      route = this.state.routes[mode];
+      if (!(route != null)) return;
+      encodedPolyline = route.routes[0].overview_polyline.points;
+      postData = {
+        min_date: "" + this.state.minYear + "-01-01",
+        max_date: "" + this.state.maxYear + "-12-31",
+        encoded_polyline: encodedPolyline
+      };
+      url = URL.replace(/%\{city}/, this.state.city);
+      return this._requests[mode] = $.ajax({
+        url: url,
+        type: 'POST',
+        data: postData,
+        dataType: 'json',
+        success: function(data) {
+          delete _this._requests[mode];
+          return _this.state.setAccidents(mode, data);
+        }
+      });
+    };
+
+    return AccidentFinder;
 
   })();
 
@@ -939,26 +1031,24 @@
   Manager = (function() {
 
     function Manager(map, origin, destination, city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv, options) {
-      var routeFinder, routeRenderer,
+      var accidentFinder, routeFinder, routeRenderer,
         _this = this;
       this.map = map;
       this.origin = origin;
       this.destination = destination;
       this.city = city;
       if (options == null) options = void 0;
-      this.setCity(this.city);
-      this.setMinYear((options != null) && (options.minYear != null) && options.minYear || DEFAULT_MIN_YEAR);
-      this.setMaxYear((options != null) && (options.maxYear != null) && options.maxYear || DEFAULT_MAX_YEAR);
       this.state = new State({
         city: this.city,
         origin: this.origin,
-        destination: this.destination
+        destination: this.destination,
+        minYear: (options != null) && options.minYear,
+        maxYear: (options != null) && options.maxYear
       });
+      this.setCity(this.city);
       routeFinder = new RouteFinder(this.state);
       routeRenderer = new RouteRenderer(this.state, this.map);
-      this.state.onChange('routes', function(mode, route) {
-        return _this.queryAndUpdatePolylineRelatedLayer(mode, route);
-      });
+      accidentFinder = new AccidentFinder(this.state);
       this.summaryRenderer = new SummaryRenderer(summaryDiv);
       this.summaryRenderer.setStatus('no-input');
       this.summaryRenderer.render();
@@ -966,11 +1056,31 @@
       this.chartRenderer = new TrendChartRenderer(chartDiv);
       this.markerRenderer = new AccidentsMarkerRenderer(this.map);
       this.worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv);
+      this.state.onChange('accidents', function(mode, accidents) {
+        _this.summaryRenderer.clearAccidents();
+        _this.tableRenderer.clearAccidents();
+        _this.chartRenderer.clearAccidents();
+        _this.markerRenderer.clearAccidents();
+        _this.worstLocationsRenderer.clearAccidents();
+        if (accidents != null) {
+          _this.summaryRenderer.addAccidents(mode, accidents);
+          _this.tableRenderer.addAccidents(mode, accidents);
+          _this.chartRenderer.addAccidents(mode, accidents);
+          _this.markerRenderer.addAccidents(mode, accidents);
+          _this.worstLocationsRenderer.addAccidents(mode, accidents);
+        }
+        _this.summaryRenderer.render();
+        _this.tableRenderer.render();
+        _this.chartRenderer.render();
+        _this.markerRenderer.render();
+        return _this.worstLocationsRenderer.render();
+      });
     }
 
     Manager.prototype.setCity = function(city) {
       var latlng, zoom, zoomData;
       this.city = city;
+      this.state.setCity(city);
       zoomData = CITIES[this.city];
       latlng = new google.maps.LatLng(zoomData.latitude, zoomData.longitude);
       zoom = zoomData.zoom;
@@ -985,21 +1095,15 @@
     };
 
     Manager.prototype.getYearRange = function() {
-      return [+this.minDate.split(/-/)[0], +this.maxDate.split(/-/)[0]];
+      return [this.state.minYear, this.state.maxYear];
     };
 
     Manager.prototype.setMinYear = function(year) {
-      var cityData;
-      cityData = CITIES[this.city];
-      if (year < cityData.minYear) year = cityData.minYear;
-      return this.minDate = "" + year + "-01-01";
+      return this.state.setMinYear(year);
     };
 
     Manager.prototype.setMaxYear = function(year) {
-      var cityData;
-      cityData = CITIES[this.city];
-      if (year > cityData.maxYear) year = cityData.maxYear;
-      return this.maxDate = "" + year + "-12-31";
+      return this.state.setMaxYear(year);
     };
 
     Manager.prototype.getCityBounds = function() {
@@ -1044,56 +1148,6 @@
         }
       }
       return this.state.setDestination(this.destination);
-    };
-
-    Manager.prototype.queryAndUpdatePolylineRelatedLayer = function(mode, googleDirectionsResult) {
-      var encoded_polyline, postData, url,
-        _this = this;
-      this.lastRequests || (this.lastRequests = {});
-      if (this.lastRequests[mode] != null) {
-        this.lastRequests[mode].abort();
-        delete this.lastRequests[mode];
-      }
-      this.clearOldData(mode);
-      if (googleDirectionsResult == null) return;
-      encoded_polyline = googleDirectionsResult.routes[0].overview_polyline.points;
-      postData = {
-        encoded_polyline: encoded_polyline
-      };
-      url = URL.replace(/%\{city\}/, this.city);
-      return this.lastRequests[mode] = $.ajax({
-        url: url,
-        type: 'POST',
-        data: postData,
-        dataType: 'json',
-        success: function(data) {
-          delete _this.lastRequests[mode];
-          _this.clearOldData(mode);
-          return _this.handleNewData(mode, data);
-        }
-      });
-    };
-
-    Manager.prototype.clearOldData = function(mode) {
-      if (mode == null) mode = void 0;
-      this.summaryRenderer.clearAccidents(mode);
-      this.tableRenderer.clearAccidents(mode);
-      this.chartRenderer.clearAccidents(mode);
-      this.markerRenderer.clearAccidents(mode);
-      return this.worstLocationsRenderer.clearAccidents(mode);
-    };
-
-    Manager.prototype.handleNewData = function(mode, data) {
-      this.summaryRenderer.addAccidents(mode, data);
-      this.tableRenderer.addAccidents(mode, data);
-      this.chartRenderer.addAccidents(mode, data);
-      this.markerRenderer.addAccidents(mode, data);
-      this.worstLocationsRenderer.addAccidents(mode, data);
-      this.summaryRenderer.render();
-      this.tableRenderer.render();
-      this.chartRenderer.render();
-      this.markerRenderer.render();
-      return this.worstLocationsRenderer.render();
     };
 
     return Manager;

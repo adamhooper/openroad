@@ -98,6 +98,8 @@ class State
     @mode = 'bicycling'
     @origin = options.origin
     @destination = options.destination
+    @minYear = this._clampYear('min', options.minYear || DEFAULT_MIN_YEAR)
+    @maxYear = this._clampYear('max', options.maxYear || DEFAULT_MAX_YEAR)
     @routes = {} # keyed by 'bicycling' and 'driving'
     @accidents = {} # keyed by 'bicycling' and 'driving'
     @listeners = {}
@@ -137,6 +139,28 @@ class State
     this.clearRoutes()
     @destination = latlng
     this._changed('destination', @destination)
+
+  _clampYear: (minOrMax, year) ->
+    property = "#{minOrMax}Year" # minYear or maxYear
+    clamp = CITIES[@city][property]
+    return clamp if !year
+    return clamp if minOrMax == 'min' && year < clamp
+    return clamp if minOrMax == 'max' && year > clamp
+    year
+
+  setMinYear: (year) ->
+    clampedYear = this._clampYear('min', year)
+    if clampedYear != @minYear
+      this.clearAccidents()
+      @minYear = clampedYear
+      this._changed('minYear', @minYear)
+
+  setMaxYear: (year) ->
+    clampedYear = this._clampYear('max', year)
+    if clampedYear != @maxYear
+      this.clearAccidents()
+      @maxYear = clampedYear
+      this._changed('maxYear', @maxYear)
 
   setRoute: (key, directions) ->
     this.clearAccidents()
@@ -262,6 +286,38 @@ class RouteRenderer
       @state.setRoute(mode, renderer.getDirections())
       @_blockingStateChanges[mode] = false
     renderer
+
+class AccidentFinder
+  constructor: (@state) ->
+    @_requests = {} # mode => ajax
+    @state.onChange('routes', () => this.refresh())
+    @state.onChange('minYear', () => this.refresh())
+    @state.onChange('maxYear', () => this.refresh())
+
+  refresh: () ->
+    for mode in (@state.mode != 'both' && [@state.mode] || ['bicycling', 'driving'])
+      this._refreshAccidents(mode)
+
+  _refreshAccidents: (mode) ->
+    if @_requests[mode]?
+      @_requests[mode].abort()
+      delete @_requests[mode]
+
+    route = @state.routes[mode]
+    return if !route?
+
+    encodedPolyline = route.routes[0].overview_polyline.points
+    postData = {
+      min_date: "#{@state.minYear}-01-01",
+      max_date: "#{@state.maxYear}-12-31",
+      encoded_polyline: encodedPolyline
+    }
+    url = URL.replace(/%\{city}/, @state.city)
+
+    @_requests[mode] = $.ajax({ url: url, type: 'POST', data: postData, dataType: 'json', success: (data) =>
+      delete @_requests[mode]
+      @state.setAccidents(mode, data)
+    })
 
 class ChartSeriesMaker
   constructor: () ->
@@ -734,19 +790,19 @@ class WorstLocationsRenderer
 
 class Manager
   constructor: (@map, @origin, @destination, @city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv, options=undefined) ->
-    this.setCity(@city)
-    this.setMinYear(options? && options.minYear? && options.minYear || DEFAULT_MIN_YEAR)
-    this.setMaxYear(options? && options.maxYear? && options.maxYear || DEFAULT_MAX_YEAR)
-
     @state = new State({
       city: @city,
       origin: @origin,
       destination: @destination,
+      minYear: options? && options.minYear
+      maxYear: options? && options.maxYear
     })
+
+    this.setCity(@city)
+
     routeFinder = new RouteFinder(@state)
     routeRenderer = new RouteRenderer(@state, @map)
-    @state.onChange 'routes', (mode, route) =>
-      this.queryAndUpdatePolylineRelatedLayer(mode, route)
+    accidentFinder = new AccidentFinder(@state)
 
     @summaryRenderer = new SummaryRenderer(summaryDiv)
     @summaryRenderer.setStatus('no-input')
@@ -756,7 +812,28 @@ class Manager
     @markerRenderer = new AccidentsMarkerRenderer(@map)
     @worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv)
 
+    @state.onChange 'accidents', (mode, accidents) =>
+      @summaryRenderer.clearAccidents()
+      @tableRenderer.clearAccidents()
+      @chartRenderer.clearAccidents()
+      @markerRenderer.clearAccidents()
+      @worstLocationsRenderer.clearAccidents()
+
+      if accidents?
+        @summaryRenderer.addAccidents(mode, accidents)
+        @tableRenderer.addAccidents(mode, accidents)
+        @chartRenderer.addAccidents(mode, accidents)
+        @markerRenderer.addAccidents(mode, accidents)
+        @worstLocationsRenderer.addAccidents(mode, accidents)
+
+      @summaryRenderer.render()
+      @tableRenderer.render()
+      @chartRenderer.render()
+      @markerRenderer.render()
+      @worstLocationsRenderer.render()
+
   setCity: (@city) ->
+    @state.setCity(city)
     zoomData = CITIES[@city]
     latlng = new google.maps.LatLng(zoomData.latitude, zoomData.longitude)
     zoom = zoomData.zoom
@@ -768,17 +845,13 @@ class Manager
     [ cityData.minYear, cityData.maxYear ]
 
   getYearRange: () ->
-    [ + @minDate.split(/-/)[0], + @maxDate.split(/-/)[0] ]
+    [ @state.minYear, @state.maxYear ]
 
   setMinYear: (year) ->
-    cityData = CITIES[@city]
-    year = cityData.minYear if year < cityData.minYear
-    @minDate = "#{year}-01-01"
+    @state.setMinYear(year)
 
   setMaxYear: (year) ->
-    cityData = CITIES[@city]
-    year = cityData.maxYear if year > cityData.maxYear
-    @maxDate = "#{year}-12-31"
+    @state.setMaxYear(year)
 
   getCityBounds: () ->
     CITIES[@city].bounds
@@ -812,48 +885,6 @@ class Manager
         @destinationMarker.setMap(null)
         delete @destinationMarker
     @state.setDestination(@destination)
-
-  queryAndUpdatePolylineRelatedLayer: (mode, googleDirectionsResult) ->
-    @lastRequests ||= {}
-
-    if @lastRequests[mode]?
-      @lastRequests[mode].abort()
-      delete @lastRequests[mode]
-
-    this.clearOldData(mode) # just in case?
-    return unless googleDirectionsResult?
-
-    encoded_polyline = googleDirectionsResult.routes[0].overview_polyline.points
-    postData = { encoded_polyline: encoded_polyline }
-
-    url = URL.replace(/%\{city\}/, @city)
-
-    @lastRequests[mode] = $.ajax({ url: url, type: 'POST', data: postData, dataType: 'json', success: (data) =>
-      delete @lastRequests[mode]
-
-      this.clearOldData(mode) # just in case?
-      this.handleNewData(mode, data)
-    })
-
-  clearOldData: (mode = undefined) ->
-    @summaryRenderer.clearAccidents(mode)
-    @tableRenderer.clearAccidents(mode)
-    @chartRenderer.clearAccidents(mode)
-    @markerRenderer.clearAccidents(mode)
-    @worstLocationsRenderer.clearAccidents(mode)
-
-  handleNewData: (mode, data) ->
-    @summaryRenderer.addAccidents(mode, data)
-    @tableRenderer.addAccidents(mode, data)
-    @chartRenderer.addAccidents(mode, data)
-    @markerRenderer.addAccidents(mode, data)
-    @worstLocationsRenderer.addAccidents(mode, data)
-
-    @summaryRenderer.render()
-    @tableRenderer.render()
-    @chartRenderer.render()
-    @markerRenderer.render()
-    @worstLocationsRenderer.render()
 
 window.Manager = Manager
 

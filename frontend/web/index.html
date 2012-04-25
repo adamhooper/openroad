@@ -142,6 +142,7 @@
         position: relative;
         font-family: 'PT Sans Narrow', sans-serif;
         color: #223b5d;
+        padding-top: 5em; /* for absolute-positioned boxes */
       }
 
       div#details h2 {
@@ -456,6 +457,9 @@
         var s = '' + min + '–' + max;
         if (min == max) s = '' + min;
         $('div.year div.value').text(s);
+
+        manager.setMinYear(min);
+        manager.setMaxYear(max);
       };
       updateYearValue();
       $slider.on('slidechange', function(e, ui) {
