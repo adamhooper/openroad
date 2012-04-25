@@ -5,6 +5,7 @@ DSN = 'dbname=bikefile user=bikefile password=bikefile host=localhost'
 
 RANGE_IN_M = 30
 ERROR_IN_M = 25
+MAX_DISTANCE_IN_M = 8000
 
 import cgi
 import json
@@ -164,11 +165,16 @@ def application(env, start_response):
             city.*,
             (ST_Line_Locate_Point(path.path, ST_ClosestPoint(path.path, "Location"::geometry)) * ST_Length(path.path::geography))::INT AS distance_along_path
         FROM %s city
-        INNER JOIN (SELECT %s AS path) path ON 1=1
+        INNER JOIN (
+            SELECT CASE WHEN ST_Length(%s::geography) > %d::float
+                 THEN ST_Line_Substring(%s, 0.0, %d::float / ST_Length(%s::geography))
+                 ELSE %s
+            END AS path
+            ) path ON 1=1
         WHERE ST_DWithin("Location", path.path::geography, %d)
           AND "Time" > '2001-01-01 00:00:00'
         ORDER BY distance_along_path
-        ''' % (city, polyline_as_sql, RANGE_IN_M)
+        ''' % (city, polyline_as_sql, MAX_DISTANCE_IN_M, polyline_as_sql, MAX_DISTANCE_IN_M, polyline_as_sql, polyline_as_sql, RANGE_IN_M)
 
     print(q)
 
