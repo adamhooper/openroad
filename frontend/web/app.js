@@ -1,7 +1,5 @@
 (function() {
-  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, Renderer, RouteFinder, RouteRenderer, State, SummaryRenderer, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText,
-    __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText;
 
   URL = 'http://localhost:8000/%{city}';
 
@@ -464,104 +462,46 @@
 
   })();
 
-  Renderer = (function() {
+  AccidentsTableRenderer = (function() {
 
-    function Renderer() {}
-
-    Renderer.prototype.clearAccidents = function(mode) {
-      if (mode == null) mode = void 0;
-      if (!(mode != null)) {
-        return this.accidents = {};
-      } else {
-        return delete this.accidents[mode];
-      }
-    };
-
-    Renderer.prototype.addAccidents = function(mode, accidents) {
-      return this.accidents[mode] = accidents;
-    };
-
-    return Renderer;
-
-  })();
-
-  SummaryRenderer = (function(_super) {
-
-    __extends(SummaryRenderer, _super);
-
-    function SummaryRenderer(div) {
-      this.div = div;
-      this.accidents = {};
-      this.status = 'no-input';
+    function AccidentsTableRenderer(state, link) {
+      var _this = this;
+      this.state = state;
+      $(link).on('click', function(e) {
+        var $div;
+        e.preventDefault();
+        $div = $('<div id="data-dialog"></div>');
+        $div.append(_this.renderTable());
+        return $div.dialog({
+          buttons: [
+            {
+              text: 'Close',
+              click: function() {
+                return $(this).dialog('close');
+              }
+            }
+          ],
+          draggable: false,
+          modal: true,
+          resizable: false,
+          position: 'center',
+          title: 'Detailed accident reports',
+          width: $(window).width() * 0.9,
+          height: $(window).height() * 0.9
+        });
+      });
     }
 
-    SummaryRenderer.prototype.setStatus = function(status) {
-      this.status = status;
-    };
-
-    SummaryRenderer.prototype.render = function() {
-      var bicycling, driving, html, nBicycling, nDriving;
-      html = '';
-      if (this.status === 'no-input') {
-        html = 'Choose an origin and destination...';
-      } else {
-        bicycling = this.accidents.bicycling != null;
-        driving = this.accidents.driving != null;
-        if (bicycling) nBicycling = this.accidents.bicycling.length;
-        if (driving) nDriving = this.accidents.driving.length;
-        if (!bicycling && !driving) {
-          html = 'Waiting for server...';
-        } else {
-          if (!bicycling) {
-            html = 'Waiting for server for bicycling data...';
-          } else if (!driving) {
-            html = 'waiting for server for driving data...';
-          } else if (nBicycling === 0 && nDriving !== 0) {
-            html = "There have been <span class=\"driving\">" + nDriving + "</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and none for the <span class=\"bicycling\">bicycling</span> route.";
-          } else if (nDriving === 0 && nBicycling !== 0) {
-            html = "There have been <span class=\"bicycling\">" + nBicycling + "</span> reported accidents involving cyclists along the <span class=\"bicycling\">bicycling</span> route and none for the <span class=\"driving\">driving</span> route.";
-          } else if (nDriving === 0 && nBicycling === 0) {
-            html = "There have been no reported accidents involving cyclists along either the <span class=\"bicycling\">bicycling</span> or <span class=\"driving\">driving</span> routes.";
-          } else {
-            html = "There have been <span class=\"driving\">" + nDriving + "</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and <span class=\"bicycling\">" + nBicycling + "</span> along the <span class=\"bicycling\">bicycling</span> route.";
-          }
-        }
-      }
-      return $(this.div).html(html);
-    };
-
-    return SummaryRenderer;
-
-  })(Renderer);
-
-  AccidentsTableRenderer = (function(_super) {
-
-    __extends(AccidentsTableRenderer, _super);
-
-    function AccidentsTableRenderer(div) {
-      this.div = div;
-      this.accidents = {};
-    }
-
-    AccidentsTableRenderer.prototype.addAccidents = function(mode, accidents) {
-      var accident, _i, _len;
-      for (_i = 0, _len = accidents.length; _i < _len; _i++) {
-        accident = accidents[_i];
-        accident.distance_along_path = "" + accident.distance_along_path + "m (" + mode + ")";
-      }
-      return this.accidents[mode] = accidents;
-    };
-
-    AccidentsTableRenderer.prototype.render = function() {
-      var $table, $tbody, $tds, $th, $theadTr, $tr, accident, accidents, heading, headings, i, key, keys, mode, modeAccidents, textNode, trClass, value, _i, _len, _len2, _len3, _ref, _ref2;
+    AccidentsTableRenderer.prototype.renderTable = function() {
+      var $table, $tbody, $tds, $th, $theadTr, $tr, accident, accidents, heading, headings, i, key, keys, mode, modeAccidents, text, textNode, trClass, value, _i, _len, _len2, _len3, _ref, _ref2;
       accidents = [];
-      _ref = this.accidents;
+      _ref = this.state.accidents;
       for (mode in _ref) {
         modeAccidents = _ref[mode];
         accidents = accidents.concat(modeAccidents);
       }
       if (!(accidents.length > 0)) return;
-      $table = $('<table><thead><tr><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>');
+      $table = $('<table><thead><tr><th class="id">ID</th><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>');
       headings = [];
       _ref2 = accidents[0];
       for (heading in _ref2) {
@@ -585,6 +525,7 @@
         return _results;
       })();
       keys.unshift('distance_along_path');
+      keys.unshift('id');
       $theadTr = $table.find('thead').children();
       for (i = 0, _len = headings.length; i < _len; i++) {
         heading = headings[i];
@@ -618,9 +559,11 @@
         }
         for (i = 0, _len3 = keys.length; i < _len3; i++) {
           key = keys[i];
-          heading = headings[i - 1];
+          heading = headings[i - 2];
           $tds[i].className = key;
-          textNode = document.createTextNode(accident[heading] || accident[key] || '');
+          text = accident[heading] || accident[key];
+          if (key === 'distance_along_path') text = "" + text + "m";
+          textNode = document.createTextNode(text || '');
           $tds[i].appendChild(textNode);
         }
         mode = /bicycling/.test(accident.distance_along_path) && 'bicycling' || 'driving';
@@ -630,61 +573,78 @@
       $table.on('dblclick', function(e) {
         return selectText($dataDiv[0]);
       });
-      $(this.div).empty();
-      return $(this.div).append($table);
+      return $table;
     };
 
     return AccidentsTableRenderer;
 
-  })(Renderer);
+  })();
 
   TrendChartRenderer = (function() {
 
-    function TrendChartRenderer(div) {
-      this.div = div;
-      this.series = {};
+    function TrendChartRenderer(state, link) {
+      var _this = this;
+      this.state = state;
+      $(link).on('click', function(e) {
+        var $div;
+        e.preventDefault();
+        $div = _this.renderChartContainer();
+        $div.dialog({
+          buttons: [
+            {
+              text: 'Close',
+              click: function() {
+                return $(this).dialog('close');
+              }
+            }
+          ],
+          draggable: false,
+          modal: true,
+          resizable: false,
+          position: 'center',
+          title: 'Accidents per year along your route',
+          width: $(window).width() * 0.8,
+          height: $(window).height() * 0.8
+        });
+        return window.setTimeout(function() {
+          return _this.renderChartInChartContainer($div);
+        }, 50);
+      });
     }
 
-    TrendChartRenderer.prototype.clearAccidents = function(mode) {
-      if (mode == null) mode = void 0;
-      if (!(mode != null)) {
-        return this.series = {};
-      } else {
-        return delete this.series[mode];
-      }
+    TrendChartRenderer.prototype.renderChartContainer = function() {
+      return $('<div id="chart-dialog"><div id="chart-dialog-inner"></div></div>');
     };
 
-    TrendChartRenderer.prototype.addAccidents = function(mode, accidents) {
-      var accident, seriesMaker, _i, _len;
-      if (accidents.length === 0) {
-        delete this.series[mode];
-        return;
-      }
-      seriesMaker = new ChartSeriesMaker();
-      for (_i = 0, _len = accidents.length; _i < _len; _i++) {
-        accident = accidents[_i];
-        seriesMaker.add(accident.Time.split('-')[0]);
-      }
-      return this.series[mode] = seriesMaker.getSeries();
+    TrendChartRenderer.prototype._modeToColor = function(mode) {
+      return COLORS[mode];
     };
 
-    TrendChartRenderer.prototype.render = function() {
-      var color, innerId, mode, plotSeries, plotSeriesOptions, series, _ref;
+    TrendChartRenderer.prototype.renderChartInChartContainer = function($div) {
+      var accident, accidents, color, innerId, mode, plotSeries, plotSeriesOptions, series, seriesEntry, seriesMaker, _i, _len, _ref;
+      series = {};
+      _ref = this.state.accidents;
+      for (mode in _ref) {
+        accidents = _ref[mode];
+        seriesMaker = new ChartSeriesMaker();
+        for (_i = 0, _len = accidents.length; _i < _len; _i++) {
+          accident = accidents[_i];
+          seriesMaker.add(accident.Time.split(/-/)[0]);
+        }
+        series[mode] = seriesMaker.getSeries();
+      }
       plotSeries = [];
       plotSeriesOptions = [];
-      _ref = this.series;
-      for (mode in _ref) {
-        series = _ref[mode];
-        color = COLORS[mode];
-        plotSeries.push(series);
+      for (mode in series) {
+        seriesEntry = series[mode];
+        color = this._modeToColor(mode);
+        plotSeries.push(seriesEntry);
         plotSeriesOptions.push({
           color: color
         });
       }
-      if (!(plotSeries.length > 0)) return;
-      innerId = "" + this.div.id + "-chartInner";
-      $(this.div).empty();
-      $(this.div).append("<div id=\"" + innerId + "\"></div>");
+      innerId = $div.children().attr('id');
+      console.log(plotSeries, plotSeriesOptions);
       return $.jqplot(innerId, plotSeries, {
         highlighter: {
           show: true,
@@ -1030,7 +990,7 @@
 
   Manager = (function() {
 
-    function Manager(map, origin, destination, city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv, options) {
+    function Manager(map, origin, destination, city, chartLink, dataLink, worstLocationsDiv, options) {
       var accidentFinder, routeFinder, routeRenderer,
         _this = this;
       this.map = map;
@@ -1049,29 +1009,17 @@
       routeFinder = new RouteFinder(this.state);
       routeRenderer = new RouteRenderer(this.state, this.map);
       accidentFinder = new AccidentFinder(this.state);
-      this.summaryRenderer = new SummaryRenderer(summaryDiv);
-      this.summaryRenderer.setStatus('no-input');
-      this.summaryRenderer.render();
-      this.tableRenderer = new AccidentsTableRenderer(dataDiv);
-      this.chartRenderer = new TrendChartRenderer(chartDiv);
+      if (chartLink != null) new TrendChartRenderer(this.state, chartLink);
+      if (dataLink != null) new AccidentsTableRenderer(this.state, dataLink);
       this.markerRenderer = new AccidentsMarkerRenderer(this.map);
       this.worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv);
       this.state.onChange('accidents', function(mode, accidents) {
-        _this.summaryRenderer.clearAccidents();
-        _this.tableRenderer.clearAccidents();
-        _this.chartRenderer.clearAccidents();
         _this.markerRenderer.clearAccidents();
         _this.worstLocationsRenderer.clearAccidents();
         if (accidents != null) {
-          _this.summaryRenderer.addAccidents(mode, accidents);
-          _this.tableRenderer.addAccidents(mode, accidents);
-          _this.chartRenderer.addAccidents(mode, accidents);
           _this.markerRenderer.addAccidents(mode, accidents);
           _this.worstLocationsRenderer.addAccidents(mode, accidents);
         }
-        _this.summaryRenderer.render();
-        _this.tableRenderer.render();
-        _this.chartRenderer.render();
         _this.markerRenderer.render();
         return _this.worstLocationsRenderer.render();
       });

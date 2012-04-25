@@ -331,71 +331,78 @@ class ChartSeriesMaker
   getSeries: () ->
     ([ +k, v ] for k, v of @data)
 
-class Renderer
-  clearAccidents: (mode = undefined) ->
-    if !mode?
-      @accidents = {}
-    else
-      delete @accidents[mode]
+#class Renderer
+#  clearAccidents: (mode = undefined) ->
+#    if !mode?
+#      @accidents = {}
+#    else
+#      delete @accidents[mode]
+#
+#  addAccidents: (mode, accidents) ->
+#    @accidents[mode] = accidents
+#
+#class SummaryRenderer extends Renderer
+#  constructor: (@div) ->
+#    @accidents = {}
+#    @status = 'no-input'
+#
+#  setStatus: (@status) ->
+#
+#  render: () ->
+#    html = ''
+#
+#    if @status == 'no-input'
+#      html = 'Choose an origin and destination...'
+#    else
+#      bicycling = @accidents.bicycling?
+#      driving = @accidents.driving?
+#
+#      nBicycling = @accidents.bicycling.length if bicycling
+#      nDriving = @accidents.driving.length if driving
+#
+#      if !bicycling and !driving
+#        html = 'Waiting for server...'
+#      else
+#        if !bicycling
+#          html = 'Waiting for server for bicycling data...'
+#        else if !driving
+#          html = 'waiting for server for driving data...'
+#        else if nBicycling == 0 && nDriving != 0
+#          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and none for the <span class=\"bicycling\">bicycling</span> route."
+#        else if nDriving == 0 && nBicycling != 0
+#          html = "There have been <span class=\"bicycling\">#{nBicycling}</span> reported accidents involving cyclists along the <span class=\"bicycling\">bicycling</span> route and none for the <span class=\"driving\">driving</span> route."
+#        else if nDriving == 0 && nBicycling == 0
+#          html = "There have been no reported accidents involving cyclists along either the <span class=\"bicycling\">bicycling</span> or <span class=\"driving\">driving</span> routes."
+#        else
+#          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and <span class=\"bicycling\">#{nBicycling}</span> along the <span class=\"bicycling\">bicycling</span> route."
+#
+#    $(@div).html(html)
 
-  addAccidents: (mode, accidents) ->
-    @accidents[mode] = accidents
+class AccidentsTableRenderer
+  constructor: (@state, link) ->
+    $(link).on 'click', (e) =>
+      e.preventDefault()
+      $div = $('<div id="data-dialog"></div>')
+      $div.append(this.renderTable())
+      $div.dialog({
+        buttons: [ { text: 'Close', click: () -> $(this).dialog('close') } ],
+        draggable: false,
+        modal: true,
+        resizable: false,
+        position: 'center',
+        title: 'Detailed accident reports',
+        width: $(window).width() * 0.9,
+        height: $(window).height() * 0.9,
+      })
 
-class SummaryRenderer extends Renderer
-  constructor: (@div) ->
-    @accidents = {}
-    @status = 'no-input'
-
-  setStatus: (@status) ->
-
-  render: () ->
-    html = ''
-
-    if @status == 'no-input'
-      html = 'Choose an origin and destination...'
-    else
-      bicycling = @accidents.bicycling?
-      driving = @accidents.driving?
-
-      nBicycling = @accidents.bicycling.length if bicycling
-      nDriving = @accidents.driving.length if driving
-
-      if !bicycling and !driving
-        html = 'Waiting for server...'
-      else
-        if !bicycling
-          html = 'Waiting for server for bicycling data...'
-        else if !driving
-          html = 'waiting for server for driving data...'
-        else if nBicycling == 0 && nDriving != 0
-          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and none for the <span class=\"bicycling\">bicycling</span> route."
-        else if nDriving == 0 && nBicycling != 0
-          html = "There have been <span class=\"bicycling\">#{nBicycling}</span> reported accidents involving cyclists along the <span class=\"bicycling\">bicycling</span> route and none for the <span class=\"driving\">driving</span> route."
-        else if nDriving == 0 && nBicycling == 0
-          html = "There have been no reported accidents involving cyclists along either the <span class=\"bicycling\">bicycling</span> or <span class=\"driving\">driving</span> routes."
-        else
-          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and <span class=\"bicycling\">#{nBicycling}</span> along the <span class=\"bicycling\">bicycling</span> route."
-
-    $(@div).html(html)
-
-class AccidentsTableRenderer extends Renderer
-  constructor: (@div) ->
-    @accidents = {}
-
-  addAccidents: (mode, accidents) ->
-    for accident in accidents
-      accident.distance_along_path = "#{accident.distance_along_path}m (#{mode})"
-
-    @accidents[mode] = accidents
-
-  render: () ->
+  renderTable: () ->
     accidents = []
-    for mode, modeAccidents of @accidents
+    for mode, modeAccidents of @state.accidents
       accidents = accidents.concat(modeAccidents)
 
     return unless accidents.length > 0
 
-    $table = $('<table><thead><tr><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>')
+    $table = $('<table><thead><tr><th class="id">ID</th><th class="distance_along_path">Odometer</th></tr></thead><tbody></tbody></table>')
 
     headings = []
 
@@ -415,6 +422,7 @@ class AccidentsTableRenderer extends Renderer
 
     keys = ( heading.toLowerCase().replace(/\s/g, '-') for heading in headings )
     keys.unshift('distance_along_path')
+    keys.unshift('id')
 
     $theadTr = $table.find('thead').children()
     for heading, i in headings
@@ -435,9 +443,11 @@ class AccidentsTableRenderer extends Renderer
       if trClass == 'odd' then trClass = 'even' else trClass = 'odd'
 
       for key, i in keys
-        heading = headings[i-1]
+        heading = headings[i-2]
         $tds[i].className = key
-        textNode = document.createTextNode(accident[heading] || accident[key] || '')
+        text = accident[heading] || accident[key]
+        text = "#{text}m" if key == 'distance_along_path'
+        textNode = document.createTextNode(text || '')
         $tds[i].appendChild(textNode)
 
       mode = /bicycling/.test(accident.distance_along_path) && 'bicycling' || 'driving'
@@ -448,46 +458,54 @@ class AccidentsTableRenderer extends Renderer
     $table.on 'dblclick', (e) ->
       selectText($dataDiv[0])
 
-    $(@div).empty()
-    $(@div).append($table)
+    $table
 
 class TrendChartRenderer
-  constructor: (@div) ->
-    @series = {}
+  constructor: (@state, link) ->
+    $(link).on 'click', (e) =>
+      e.preventDefault()
 
-  clearAccidents: (mode = undefined) ->
-    if !mode?
-      @series = {}
-    else
-      delete @series[mode]
+      $div = this.renderChartContainer()
+      $div.dialog({
+        buttons: [ { text: 'Close', click: () -> $(this).dialog('close') } ],
+        draggable: false,
+        modal: true,
+        resizable: false,
+        position: 'center',
+        title: 'Accidents per year along your route',
+        width: $(window).width() * 0.8,
+        height: $(window).height() * 0.8,
+      })
+      window.setTimeout( () =>
+        # Need to be positioned first
+        this.renderChartInChartContainer($div)
+      , 50)
 
-  addAccidents: (mode, accidents) ->
-    if accidents.length == 0
-      delete @series[mode]
-      return
+  renderChartContainer: () ->
+    $('<div id="chart-dialog"><div id="chart-dialog-inner"></div></div>')
 
-    seriesMaker = new ChartSeriesMaker()
+  _modeToColor: (mode) ->
+    COLORS[mode]
 
-    for accident in accidents
-      seriesMaker.add(accident.Time.split('-')[0])
+  renderChartInChartContainer: ($div) ->
+    series = {}
+    for mode, accidents of @state.accidents
+      seriesMaker = new ChartSeriesMaker()
+      for accident in accidents
+        seriesMaker.add(accident.Time.split(/-/)[0]) # year
+      series[mode] = seriesMaker.getSeries()
 
-    @series[mode] = seriesMaker.getSeries()
-
-  render: () ->
     plotSeries = []
     plotSeriesOptions = []
 
-    for mode, series of @series
-      color = COLORS[mode]
-      plotSeries.push(series)
-      plotSeriesOptions.push({color:color})
+    for mode, seriesEntry of series
+      color = this._modeToColor(mode)
+      plotSeries.push(seriesEntry)
+      plotSeriesOptions.push({color: color})
 
-    return unless plotSeries.length > 0
+    innerId = $div.children().attr('id')
 
-    innerId = "#{@div.id}-chartInner"
-
-    $(@div).empty()
-    $(@div).append("<div id=\"#{innerId}\"></div>")
+    console.log(plotSeries, plotSeriesOptions)
 
     $.jqplot(innerId, plotSeries, {
       highlighter: { show: true, sizeAdjust: 8 },
@@ -789,7 +807,7 @@ class WorstLocationsRenderer
     $div.append($ul)
 
 class Manager
-  constructor: (@map, @origin, @destination, @city, summaryDiv, chartDiv, dataDiv, worstLocationsDiv, options=undefined) ->
+  constructor: (@map, @origin, @destination, @city, chartLink, dataLink, worstLocationsDiv, options=undefined) ->
     @state = new State({
       city: @city,
       origin: @origin,
@@ -804,31 +822,22 @@ class Manager
     routeRenderer = new RouteRenderer(@state, @map)
     accidentFinder = new AccidentFinder(@state)
 
-    @summaryRenderer = new SummaryRenderer(summaryDiv)
-    @summaryRenderer.setStatus('no-input')
-    @summaryRenderer.render()
-    @tableRenderer = new AccidentsTableRenderer(dataDiv)
-    @chartRenderer = new TrendChartRenderer(chartDiv)
+    if chartLink?
+      new TrendChartRenderer(@state, chartLink)
+    if dataLink?
+      new AccidentsTableRenderer(@state, dataLink)
+
     @markerRenderer = new AccidentsMarkerRenderer(@map)
     @worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv)
 
     @state.onChange 'accidents', (mode, accidents) =>
-      @summaryRenderer.clearAccidents()
-      @tableRenderer.clearAccidents()
-      @chartRenderer.clearAccidents()
       @markerRenderer.clearAccidents()
       @worstLocationsRenderer.clearAccidents()
 
       if accidents?
-        @summaryRenderer.addAccidents(mode, accidents)
-        @tableRenderer.addAccidents(mode, accidents)
-        @chartRenderer.addAccidents(mode, accidents)
         @markerRenderer.addAccidents(mode, accidents)
         @worstLocationsRenderer.addAccidents(mode, accidents)
 
-      @summaryRenderer.render()
-      @tableRenderer.render()
-      @chartRenderer.render()
       @markerRenderer.render()
       @worstLocationsRenderer.render()
 

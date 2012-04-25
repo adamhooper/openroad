@@ -146,6 +146,7 @@
       }
 
       div#details h2 {
+        font-size: 1em;
         font-weight: normal;
         margin: 0;
         padding: 0;
@@ -282,23 +283,6 @@
         border-top: 2px solid #223b5d;
       }
 
-      h2 {
-        font-size: 1em;
-        cursor: pointer;
-      }
-
-      .driving {
-        color: #cccc00;
-      }
-
-      .bicycling {
-        color: #00cc00;
-      }
-
-      .both {
-        color: #77cc00;
-      }
-
       ul#city {
         margin: .5em 0;
         padding: 0;
@@ -314,26 +298,28 @@
         font-weight: bold;
       }
 
-      div#data {
-        width: 100%;
-        height: 20em;
+      div#data-dialog {
         overflow: auto;
       }
 
-      div#data table {
+      div#data-dialog table {
         border-collapse: collapse;
         border: none;
       }
 
-      div#data th, div#data td {
+      div#data-dialog th, div#data-dialog td {
         text-align: left;
         white-space: nowrap;
         padding: 2px 4px;
         font-size: .75em;
-        font-family: Georgia;
+        font-family: 'PT Sans Narrow', sans-serif;
       }
 
-      div#data .address {
+      div#data-dialog td.id, div#data-dialog td.distance_along_path {
+        text-align: right;
+      }
+
+      div#data-dialog .address {
         display: none;
       }
     </style>
@@ -384,18 +370,13 @@
         <h2><a href="#">View results by year</a></h2>
       </div>
       <div class="data">
-        <h2><a href="#">View accient reports</a></h2>
+        <h2><a href="#">View accident reports</a></h2>
       </div>
       <div class="other-cities">
         <h2><a href="#">Explore another city</a></h2>
       </div>
 
       <div id="worst-locations"></div>
-    </div>
-    <div class="expander">
-      <h2>Detailed accident reports along these paths</h2>
-      <div id="chart"></div>
-      <div style="display: none;" id="data"></div>
     </div>
     <p>Choose your city:</p>
     <ul id="city">
@@ -424,11 +405,10 @@
       var bikeLayer = new google.maps.BicyclingLayer();
       bikeLayer.setMap(map);
 
-      var summaryDiv = document.getElementById('summary');
-      var chartDiv = document.getElementById('chart');
-      var dataDiv = document.getElementById('data');
+      var chartLink = $('#details .chart a')[0];
+      var dataLink = $('#details .data a')[0];
       var worstLocationsDiv = document.getElementById('worst-locations');
-      var manager = new Manager(map, undefined, undefined, 'toronto', summaryDiv, chartDiv, dataDiv, worstLocationsDiv);
+      var manager = new Manager(map, undefined, undefined, 'toronto', chartLink, dataLink, worstLocationsDiv);
 
       $('form#origin').address_search_form('origin', manager);
       $('form#destination').address_search_form('destination', manager);
