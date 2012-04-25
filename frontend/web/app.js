@@ -125,6 +125,7 @@
     };
 
     State.prototype.setMode = function(mode) {
+      if (this.mode === mode) return;
       this.mode = mode;
       return this._changed('mode', this.mode);
     };
@@ -176,7 +177,7 @@
     };
 
     State.prototype.setRoute = function(key, directions) {
-      this.clearAccidents();
+      this.clearAccidents(key);
       this.routes[key] = directions;
       return this._changed('routes', key, directions);
     };
@@ -281,32 +282,33 @@
     };
 
     RouteFinder.prototype.refresh = function() {
-      var googleMode, request, requestId, service, _i, _len, _ref, _results,
-        _this = this;
+      var googleMode, _i, _len, _ref, _results;
       if (!(this.state.origin != null) || !(this.state.destination != null)) {
         this.state.clearRoutes();
         return;
       }
-      service = this._getDirectionsService();
       _ref = this._modeToGoogleModes(this.state.mode);
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         googleMode = _ref[_i];
-        request = this._getDirectionsRequestForGoogleMode(googleMode);
-        requestId = (this._activeRequestIds[googleMode] += 1);
-        _results.push(service.route(request, function(result, status) {
-          return _this._receiveDirectionsResponse(googleMode, requestId, result, status);
-        }));
+        _results.push(this._refreshGoogleModeRoute(googleMode));
       }
       return _results;
     };
 
-    RouteFinder.prototype._receiveDirectionsResponse = function(googleMode, requestId, result, status) {
-      var mode;
-      if (this._activeRequestIds[googleMode] !== requestId) return;
-      if (status !== google.maps.DirectionsStatus.OK) return;
+    RouteFinder.prototype._refreshGoogleModeRoute = function(googleMode) {
+      var mode, request, requestId, service,
+        _this = this;
       mode = this._googleModeToMode(googleMode);
-      return this.state.setRoute(mode, result);
+      if (this.state.routes[mode]) return;
+      service = this._getDirectionsService();
+      request = this._getDirectionsRequestForGoogleMode(googleMode);
+      requestId = (this._activeRequestIds[googleMode] += 1);
+      return service.route(request, function(result, status) {
+        if (_this._activeRequestIds[googleMode] !== requestId) return;
+        if (status !== google.maps.DirectionsStatus.OK) return;
+        return _this.state.setRoute(mode, result);
+      });
     };
 
     return RouteFinder;
@@ -327,25 +329,33 @@
         this._blockingStateChanges[mode] = false;
         this.renderers[mode] = this._createDirectionsRendererForMode(mode, map);
       }
-      this.state.onChange('routes', function(mode, route) {
-        var _j, _len2, _ref2, _results;
-        _ref2 = mode && [mode] || ['bicycling', 'driving'];
-        _results = [];
-        for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
-          mode = _ref2[_j];
-          if (_this._blockingStateChanges[mode]) continue;
-          _this._blockingStateChanges[mode] = true;
-          if (!(route != null)) {
-            _this.renderers[mode].setMap(null);
-          } else {
-            _this.renderers[mode].setDirections(route);
-            _this.renderers[mode].setMap(map);
-          }
-          _results.push(_this._blockingStateChanges[mode] = false);
-        }
-        return _results;
+      this.state.onChange('routes', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('mode', function() {
+        return _this.refresh();
       });
     }
+
+    RouteRenderer.prototype.refresh = function() {
+      var mode, route, _i, _len, _ref, _results;
+      _ref = ['bicycling', 'driving'];
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mode = _ref[_i];
+        if (this._blockingStateChanges[mode]) continue;
+        route = this.state.routes[mode];
+        if (route && (this.state.mode === 'both' || mode === this.state.mode)) {
+          this._blockingStateChanges[mode] = true;
+          this.renderers[mode].setDirections(route);
+          this.renderers[mode].setMap(map);
+          _results.push(this._blockingStateChanges[mode] = false);
+        } else {
+          _results.push(this.renderers[mode].setMap(null));
+        }
+      }
+      return _results;
+    };
 
     RouteRenderer.prototype._createDirectionsRendererForMode = function(mode) {
       var color, renderer,
@@ -644,7 +654,6 @@
         });
       }
       innerId = $div.children().attr('id');
-      console.log(plotSeries, plotSeriesOptions);
       return $.jqplot(innerId, plotSeries, {
         highlighter: {
           show: true,
@@ -673,10 +682,22 @@
 
   AccidentsMarkerRenderer = (function() {
 
-    function AccidentsMarkerRenderer(map) {
-      var calculateMarkerStyleIndex, clusterUrlRoot, iconStyles, makeIconStyle;
+    function AccidentsMarkerRenderer(state, map) {
+      var _this = this;
+      this.state = state;
       this.map = map;
       this.markerArrays = {};
+      this.clusterer = this._createClusterer();
+      this.state.onChange('accidents', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('mode', function() {
+        return _this.refresh();
+      });
+    }
+
+    AccidentsMarkerRenderer.prototype._createClusterer = function() {
+      var calculateMarkerStyleIndex, clusterUrlRoot, iconStyles, makeIconStyle;
       iconStyles = [];
       clusterUrlRoot = "" + window.location.protocol + "//" + window.location.host + (window.location.pathname.replace(/[^\/]*$/, '')) + "/icons";
       calculateMarkerStyleIndex = function(markers, nIconStyles) {
@@ -715,7 +736,7 @@
         };
       };
       iconStyles = [makeIconStyle('driving', 0, 13), makeIconStyle('driving', 1, 15), makeIconStyle('driving', 2, 17), makeIconStyle('bicycling', 0, 13), makeIconStyle('bicycling', 1, 15), makeIconStyle('bicycling', 2, 17), makeIconStyle('both', 0, 13), makeIconStyle('both', 1, 15), makeIconStyle('both', 2, 17)];
-      this.clusterer = new MarkerClusterer(this.map, [], {
+      return new MarkerClusterer(this.map, [], {
         averageCenter: true,
         gridSize: 15,
         styles: iconStyles,
@@ -724,29 +745,16 @@
         printable: true,
         zoomOnClick: false
       });
-    }
+    };
 
-    AccidentsMarkerRenderer.prototype.clearAccidents = function(mode) {
-      var accidents, _ref;
-      if (mode == null) mode = void 0;
-      if (!(mode != null)) {
-        _ref = this.markerArrays;
-        for (mode in _ref) {
-          accidents = _ref[mode];
-          this.clearAccidents(mode);
-        }
-        return;
-      }
-      if (!this.markerArrays[mode]) return;
+    AccidentsMarkerRenderer.prototype._unpopulateMarkerArray = function(mode) {
       this.clusterer.removeMarkers(this.markerArrays[mode]);
       return delete this.markerArrays[mode];
     };
 
-    AccidentsMarkerRenderer.prototype.addAccidents = function(mode, accidents) {
-      var accident, accidentKeyToMode, key, latLng, latitude, longitude, marker, markers, _, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
-      this.clearAccidents(mode);
-      if (accidents.length === 0) return;
-      this.markerArrays[mode] = [];
+    AccidentsMarkerRenderer.prototype._populateMarkerArray = function(mode, accidents) {
+      var accident, arr, latLng, latitude, longitude, marker, _i, _len;
+      arr = [];
       for (_i = 0, _len = accidents.length; _i < _len; _i++) {
         accident = accidents[_i];
         latitude = accident.Latitude;
@@ -756,15 +764,20 @@
           position: latLng,
           flat: true
         });
-        marker.accidentUniqueKey = "" + latitude + "|" + longitude + "|" + accident.Time;
-        this.markerArrays[mode].push(marker);
+        marker.accidentUniqueKey = "" + accident.id;
+        arr.push(marker);
       }
+      return this.markerArrays[mode] = arr;
+    };
+
+    AccidentsMarkerRenderer.prototype._refreshMarkerModes = function() {
+      var accidentKeyToMode, key, marker, markers, mode, _, _i, _len, _ref, _ref2, _results;
       accidentKeyToMode = {};
       _ref = this.markerArrays;
       for (mode in _ref) {
         markers = _ref[mode];
-        for (_j = 0, _len2 = markers.length; _j < _len2; _j++) {
-          marker = markers[_j];
+        for (_i = 0, _len = markers.length; _i < _len; _i++) {
+          marker = markers[_i];
           key = marker.accidentUniqueKey;
           if ((accidentKeyToMode[key] != null) && accidentKeyToMode[key] !== mode) {
             accidentKeyToMode[key] = 'both';
@@ -774,19 +787,52 @@
         }
       }
       _ref2 = this.markerArrays;
+      _results = [];
       for (_ in _ref2) {
         markers = _ref2[_];
-        for (_k = 0, _len3 = markers.length; _k < _len3; _k++) {
-          marker = markers[_k];
-          key = marker.accidentUniqueKey;
-          marker.accidentPath = accidentKeyToMode[key];
-        }
+        _results.push((function() {
+          var _j, _len2, _results2;
+          _results2 = [];
+          for (_j = 0, _len2 = markers.length; _j < _len2; _j++) {
+            marker = markers[_j];
+            key = marker.accidentUniqueKey;
+            _results2.push(marker.accidentPath = accidentKeyToMode[key]);
+          }
+          return _results2;
+        })());
       }
-      this.clusterer.addMarkers(this.markerArrays[mode], true);
-      return this.clusterer.repaint();
+      return _results;
     };
 
-    AccidentsMarkerRenderer.prototype.render = function() {};
+    AccidentsMarkerRenderer.prototype.refresh = function() {
+      var changed, mode, toAdd, _i, _j, _len, _len2, _ref;
+      changed = false;
+      toAdd = [];
+      _ref = ['bicycling', 'driving'];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mode = _ref[_i];
+        if ((this.state.accidents[mode] != null) && (this.state.mode === 'both' || this.state.mode === mode)) {
+          if (!this.markerArrays[mode]) {
+            this._populateMarkerArray(mode, this.state.accidents[mode]);
+            toAdd.push(mode);
+            changed = true;
+          }
+        } else {
+          if (this.markerArrays[mode] != null) {
+            this._unpopulateMarkerArray(mode);
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        this._refreshMarkerModes();
+        for (_j = 0, _len2 = toAdd.length; _j < _len2; _j++) {
+          mode = toAdd[_j];
+          this.clusterer.addMarkers(this.markerArrays[mode], true);
+        }
+        return this.clusterer.repaint();
+      }
+    };
 
     return AccidentsMarkerRenderer;
 
@@ -991,8 +1037,7 @@
   Manager = (function() {
 
     function Manager(map, origin, destination, city, chartLink, dataLink, worstLocationsDiv, options) {
-      var accidentFinder, routeFinder, routeRenderer,
-        _this = this;
+      var _this = this;
       this.map = map;
       this.origin = origin;
       this.destination = destination;
@@ -1006,21 +1051,18 @@
         maxYear: (options != null) && options.maxYear
       });
       this.setCity(this.city);
-      routeFinder = new RouteFinder(this.state);
-      routeRenderer = new RouteRenderer(this.state, this.map);
-      accidentFinder = new AccidentFinder(this.state);
+      new RouteFinder(this.state);
+      new RouteRenderer(this.state, this.map);
+      new AccidentFinder(this.state);
+      new AccidentsMarkerRenderer(this.state, this.map);
       if (chartLink != null) new TrendChartRenderer(this.state, chartLink);
       if (dataLink != null) new AccidentsTableRenderer(this.state, dataLink);
-      this.markerRenderer = new AccidentsMarkerRenderer(this.map);
       this.worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv);
       this.state.onChange('accidents', function(mode, accidents) {
-        _this.markerRenderer.clearAccidents();
         _this.worstLocationsRenderer.clearAccidents();
         if (accidents != null) {
-          _this.markerRenderer.addAccidents(mode, accidents);
           _this.worstLocationsRenderer.addAccidents(mode, accidents);
         }
-        _this.markerRenderer.render();
         return _this.worstLocationsRenderer.render();
       });
     }
@@ -1282,6 +1324,22 @@
   $.fn.address_search_form = function(originOrDestination, manager) {
     return $.each(this, function() {
       return new AddressSearchForm(this, originOrDestination, manager);
+    });
+  };
+
+  $.fn.mode_form = function(state) {
+    return $.each(this, function() {
+      var $form;
+      $form = $(this);
+      $form.on('click change', function(e) {
+        var mode, s;
+        s = $form.serialize();
+        mode = s.split(/[=]/)[1];
+        return state.setMode(mode);
+      });
+      return state.onChange('mode', function() {
+        return $form.find("input[value=" + state.mode + "]").attr('checked', 'checked');
+      });
     });
   };
 

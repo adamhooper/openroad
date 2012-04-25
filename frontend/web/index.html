@@ -69,13 +69,13 @@
         position: relative;
       }
 
-      div.origin-destination, form.mode {
+      div.origin-destination, form#mode {
         font-family: 'PT Sans Narrow', sans-serif;
         color: #223b5d;
         margin-bottom: .25em;
       }
 
-      div.origin-destination h2, form.mode h2 {
+      div.origin-destination h2, form#mode h2 {
         font-weight: normal;
         margin: 0;
         padding: 0;
@@ -126,7 +126,7 @@
         color: #a1cde5;
       }
 
-      form.mode {
+      form#mode {
         position: absolute;
         right: 0;
         top: 0;
@@ -349,7 +349,7 @@
           <a href="#">or choose from map</a>
         </form>
       </div>
-      <form class="mode">
+      <form id="mode">
         <h2>Set your transport</h2>
         <div class="options">
           <label class="bicycling"><input type="radio" name="mode" value="bicycling" checked="checked" />bike</label>
@@ -409,6 +409,8 @@
       var dataLink = $('#details .data a')[0];
       var worstLocationsDiv = document.getElementById('worst-locations');
       var manager = new Manager(map, undefined, undefined, 'toronto', chartLink, dataLink, worstLocationsDiv);
+
+      $('form#mode').mode_form(manager.state);
 
       $('form#origin').address_search_form('origin', manager);
       $('form#destination').address_search_form('destination', manager);

@@ -123,6 +123,7 @@ class State
     this._changed('city', @city)
 
   setMode: (mode) ->
+    return if @mode == mode
     @mode = mode
     this._changed('mode', @mode)
 
@@ -163,7 +164,7 @@ class State
       this._changed('maxYear', @maxYear)
 
   setRoute: (key, directions) ->
-    this.clearAccidents()
+    this.clearAccidents(key)
     this.routes[key] = directions
     this._changed('routes', key, directions)
 
@@ -235,19 +236,20 @@ class RouteFinder
       @state.clearRoutes()
       return
 
-    service = this._getDirectionsService()
     for googleMode in this._modeToGoogleModes(@state.mode)
-      request = this._getDirectionsRequestForGoogleMode(googleMode)
-      requestId = (@_activeRequestIds[googleMode] += 1)
-      service.route request, (result, status) =>
-        this._receiveDirectionsResponse(googleMode, requestId, result, status)
+      this._refreshGoogleModeRoute(googleMode)
 
-  _receiveDirectionsResponse: (googleMode, requestId, result, status) ->
-    return if @_activeRequestIds[googleMode] != requestId
-    return if status != google.maps.DirectionsStatus.OK # FIXME handle error
-
+  _refreshGoogleModeRoute: (googleMode) ->
     mode = this._googleModeToMode(googleMode)
-    @state.setRoute(mode, result)
+    return if @state.routes[mode]
+
+    service = this._getDirectionsService()
+    request = this._getDirectionsRequestForGoogleMode(googleMode)
+    requestId = (@_activeRequestIds[googleMode] += 1)
+    service.route request, (result, status) =>
+      return if @_activeRequestIds[googleMode] != requestId
+      return if status != google.maps.DirectionsStatus.OK # FIXME handle error
+      @state.setRoute(mode, result)
 
 class RouteRenderer
   constructor: (@state, map) ->
@@ -257,17 +259,20 @@ class RouteRenderer
       @_blockingStateChanges[mode] = false
       @renderers[mode] = this._createDirectionsRendererForMode(mode, map)
 
-    @state.onChange 'routes', (mode, route) =>
-      # mode is undefined if we're clearing both
-      for mode in (mode && [mode] || ['bicycling', 'driving'])
-        continue if @_blockingStateChanges[mode]
+    @state.onChange('routes', () => this.refresh())
+    @state.onChange('mode', () => this.refresh())
+
+  refresh: () ->
+    for mode in [ 'bicycling', 'driving' ]
+      continue if @_blockingStateChanges[mode]
+      route = @state.routes[mode]
+      if route && (@state.mode == 'both' || mode == @state.mode)
         @_blockingStateChanges[mode] = true
-        if !route?
-          @renderers[mode].setMap(null)
-        else
-          @renderers[mode].setDirections(route)
-          @renderers[mode].setMap(map)
+        @renderers[mode].setDirections(route)
+        @renderers[mode].setMap(map)
         @_blockingStateChanges[mode] = false
+      else
+        @renderers[mode].setMap(null)
 
   _createDirectionsRendererForMode: (mode) ->
     color = COLORS[mode]
@@ -505,8 +510,6 @@ class TrendChartRenderer
 
     innerId = $div.children().attr('id')
 
-    console.log(plotSeries, plotSeriesOptions)
-
     $.jqplot(innerId, plotSeries, {
       highlighter: { show: true, sizeAdjust: 8 },
       cursor: { show: false },
@@ -518,9 +521,14 @@ class TrendChartRenderer
     })
 
 class AccidentsMarkerRenderer
-  constructor: (@map) ->
+  constructor: (@state, @map) ->
     @markerArrays = {}
+    @clusterer = this._createClusterer()
 
+    @state.onChange('accidents', () => this.refresh())
+    @state.onChange('mode', () => this.refresh())
+
+  _createClusterer: () ->
     iconStyles = []
 
     clusterUrlRoot = "#{window.location.protocol}//#{window.location.host}#{window.location.pathname.replace(/[^\/]*$/, '')}/icons"
@@ -587,7 +595,7 @@ class AccidentsMarkerRenderer
       makeIconStyle('both', 2, 17),
     ]
 
-    @clusterer = new MarkerClusterer(@map, [], {
+    new MarkerClusterer(@map, [], {
       averageCenter: true,
       gridSize: 15,
       styles: iconStyles,
@@ -597,23 +605,12 @@ class AccidentsMarkerRenderer
       zoomOnClick: false,
     })
 
-  clearAccidents: (mode = undefined) ->
-    if !mode?
-      this.clearAccidents(mode) for mode, accidents of @markerArrays
-      return
-
-    return if !@markerArrays[mode]
-
+  _unpopulateMarkerArray: (mode) ->
     @clusterer.removeMarkers(@markerArrays[mode])
-
     delete @markerArrays[mode]
 
-  addAccidents: (mode, accidents) ->
-    this.clearAccidents(mode)
-
-    return if accidents.length == 0
-
-    @markerArrays[mode] = []
+  _populateMarkerArray: (mode, accidents) ->
+    arr = []
     for accident in accidents
       latitude = accident.Latitude
       longitude = accident.Longitude
@@ -622,9 +619,13 @@ class AccidentsMarkerRenderer
         position: latLng,
         flat: true,
       })
-      marker.accidentUniqueKey = "#{latitude}|#{longitude}|#{accident.Time}"
-      @markerArrays[mode].push(marker)
+      marker.accidentUniqueKey = "#{accident.id}"
+      arr.push(marker)
 
+    @markerArrays[mode] = arr
+
+  _refreshMarkerModes: () ->
+    # for each marker, sets marker.accidentPath to 'bicycling', 'driving' or 'both'
     accidentKeyToMode = {}
     for mode, markers of @markerArrays
       for marker in markers
@@ -639,11 +640,33 @@ class AccidentsMarkerRenderer
         key = marker.accidentUniqueKey
         marker.accidentPath = accidentKeyToMode[key]
 
-    @clusterer.addMarkers(@markerArrays[mode], true)
-    @clusterer.repaint()
+  refresh: () ->
+    # Assume accidents array only changes from (set 1) -> (undefined) -> (set 2)
+    # This optimizes a common case, (set 1) -> (set 1)
+    changed = false
+    toAdd = []
+    for mode in [ 'bicycling', 'driving' ]
+      if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode)
+        # There are accidents we want to render
+        if !@markerArrays[mode]
+          # And we aren't rendering them
+          this._populateMarkerArray(mode, @state.accidents[mode])
+          toAdd.push(mode)
+          changed = true
+      else
+        # There's a lack of accidents to render
+        if @markerArrays[mode]?
+          # But we're rendering them
+          this._unpopulateMarkerArray(mode)
+          changed = true
 
-  render: () ->
-    # nothing. See addAccidents()
+    if changed
+      this._refreshMarkerModes()
+
+      for mode in toAdd
+        @clusterer.addMarkers(@markerArrays[mode], true)
+
+      @clusterer.repaint()
 
 class WorstLocationsRenderer
   constructor: (@div) ->
@@ -818,27 +841,24 @@ class Manager
 
     this.setCity(@city)
 
-    routeFinder = new RouteFinder(@state)
-    routeRenderer = new RouteRenderer(@state, @map)
-    accidentFinder = new AccidentFinder(@state)
+    new RouteFinder(@state)
+    new RouteRenderer(@state, @map)
+    new AccidentFinder(@state)
+    new AccidentsMarkerRenderer(@state, @map)
 
     if chartLink?
       new TrendChartRenderer(@state, chartLink)
     if dataLink?
       new AccidentsTableRenderer(@state, dataLink)
 
-    @markerRenderer = new AccidentsMarkerRenderer(@map)
     @worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv)
 
     @state.onChange 'accidents', (mode, accidents) =>
-      @markerRenderer.clearAccidents()
       @worstLocationsRenderer.clearAccidents()
 
       if accidents?
-        @markerRenderer.addAccidents(mode, accidents)
         @worstLocationsRenderer.addAccidents(mode, accidents)
 
-      @markerRenderer.render()
       @worstLocationsRenderer.render()
 
   setCity: (@city) ->
@@ -1036,3 +1056,15 @@ class AddressSearchForm
 
 $.fn.address_search_form = (originOrDestination, manager) ->
   $.each(this, () -> new AddressSearchForm(this, originOrDestination, manager))
+
+$.fn.mode_form = (state) ->
+  $.each this, () ->
+    $form = $(this)
+
+    $form.on 'click change', (e) ->
+      s = $form.serialize()
+      mode = s.split(/[=]/)[1]
+      state.setMode(mode)
+
+    state.onChange 'mode', () ->
+      $form.find("input[value=#{state.mode}]").attr('checked', 'checked')
