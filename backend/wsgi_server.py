@@ -6,6 +6,8 @@ DSN = 'dbname=bikefile user=bikefile password=bikefile host=localhost'
 RANGE_IN_M = 30
 ERROR_IN_M = 25
 MAX_DISTANCE_IN_M = 8000
+DEFAULT_MIN_DATE = '2007-01-01'
+DEFAULT_MAX_DATE = '2011-01-01'
 
 import cgi
 import json
@@ -129,6 +131,14 @@ def _get_city(path_info):
 
     return None
 
+DATE_REGEX = re.compile(r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})')
+def format_datetime_string(s, default, time):
+    m = DATE_REGEX.match(s)
+    if m:
+        return '%s-%s-%s %s' % (m.year, m.month, m.day, time)
+    else:
+        return '%s %s' % (default, time)
+
 def application(env, start_response):
     city = _get_city(env['PATH_INFO'])
 
@@ -147,6 +157,8 @@ def application(env, start_response):
     query_string = env['wsgi.input'].read()
     qs = cgi.parse_qs(query_string)
     encoded_polyline = qs.get(b'encoded_polyline', [''])[0]
+    min_datetime = format_datetime_string(qs.get(b'min_date', [''])[0], DEFAULT_MIN_DATE, '00:00:00')
+    max_datetime = format_datetime_string(qs.get(b'max_date', [''])[0], DEFAULT_MAX_DATE, '23:59:59')
 
     polyline = _decode_line(encoded_polyline)
 
@@ -160,7 +172,7 @@ def application(env, start_response):
 
     polyline_as_sql = _polyline_to_sql(polyline)
 
-    # TODO: add bounds WHERE clause, using GiST
+    # Yes, we use string interpolation. But it's all safe.
     q = '''SELECT
             city.*,
             (ST_Line_Locate_Point(path.path, ST_ClosestPoint(path.path, "Location"::geometry)) * ST_Length(path.path::geography))::INT AS distance_along_path
@@ -172,9 +184,13 @@ def application(env, start_response):
             END AS path
             ) path ON 1=1
         WHERE ST_DWithin("Location", path.path::geography, %d)
-          AND "Time" > '2001-01-01 00:00:00'
+          AND "Time" >= '%s'
+          AND "Time" <= '%s'
         ORDER BY distance_along_path
-        ''' % (city, polyline_as_sql, MAX_DISTANCE_IN_M, polyline_as_sql, MAX_DISTANCE_IN_M, polyline_as_sql, polyline_as_sql, RANGE_IN_M)
+        ''' % (city,
+               polyline_as_sql, MAX_DISTANCE_IN_M, polyline_as_sql, MAX_DISTANCE_IN_M, polyline_as_sql, polyline_as_sql,
+               RANGE_IN_M,
+               min_datetime, max_datetime)
 
     print(q)
 
