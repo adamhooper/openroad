@@ -669,17 +669,15 @@ class AccidentsMarkerRenderer
       @clusterer.repaint()
 
 class WorstLocationsRenderer
-  constructor: (@div) ->
-    @topGroups = {}
+  constructor: (@state, @div, @map) ->
+    @topGroupsByMode = {}
     @maxLocations = 3
+    @markers = []
 
-  clearAccidents: (mode = undefined) ->
-    if !mode?
-      @topGroups = {}
-    else
-      delete @topGroups[mode]
+    @state.onChange('accidents', () => this.refresh())
+    @state.onChange('mode', () => this.refresh())
 
-  addAccidents: (mode, accidents) ->
+  _accidentsToTopGroups: (accidents) ->
     objs = []
     results = []
 
@@ -718,82 +716,96 @@ class WorstLocationsRenderer
               objs[d].splice(i, 1)
               break
 
-    @topGroups[mode] = results
+    results
 
-  getTopGroups: () ->
-    idToGroup = {}
-    topGroupsTotal = []
+  _getActiveModes: () ->
+    if @state.mode == 'both'
+      [ 'bicycling', 'driving' ]
+    else
+      [ @state.mode ]
 
-    for mode, topGroups of @topGroups
-      for topGroup in topGroups
+  _getTopSpots: () ->
+    idToSpot = {}
+    topSpots = []
+
+    for mode in this._getActiveModes()
+      continue unless @topGroupsByMode[mode]?
+      for topGroup in @topGroupsByMode[mode]
         # If two groups (one per mode) contain the same accident, merge them.
-        totalTopGroup = undefined
+        topSpot = undefined
 
         # Search for the duplicates
         for accident in topGroup
-          if idToGroup[accident.id]?
-            totalTopGroup = idToGroup[accident.id]
-            totalTopGroup.mode = 'both'
+          if idToSpot[accident.id]?
+            topSpot = idToSpot[accident.id]
+            topSpot.mode = 'both'
             break
 
         # If we're not merging, initialize an empty array
-        if !totalTopGroup?
-          totalTopGroup = { mode: mode, accidents: [] }
-          topGroupsTotal.push(totalTopGroup)
+        if !topSpot?
+          topSpot = { mode: mode, accidents: [] }
+          topSpots.push(topSpot)
 
         # Merge/copy into the array
         for accident in topGroup
-          if !idToGroup[accident.id]?
-            idToGroup[accident.id] = totalTopGroup
-            totalTopGroup.accidents.push(accident)
+          if !idToSpot[accident.id]?
+            idToSpot[accident.id] = topSpot
+            topSpot.accidents.push(accident)
 
-    topGroupsTotal.sort((a, b) -> b.length - a.length)
+    topSpots.sort((a, b) -> b.length - a.length)
 
-    topGroupsTotal.slice(0, 3)
+    topSpots = topSpots.slice(0, 3)
 
-  groupToSpot: (group) ->
+    for topSpot in topSpots
+      this._fillLocation(topSpot)
+
+    topSpots
+
+  _fillLocation: (topSpot) ->
     sumLatitude = 0
     sumLongitude = 0
-    for accident in group.accidents
+    for accident in topSpot.accidents
       sumLatitude += accident.Latitude
       sumLongitude += accident.Longitude
 
-    {
-      Latitude: sumLatitude / group.accidents.length,
-      Longitude: sumLongitude / group.accidents.length,
-      mode: group.mode,
-      accidents: group.accidents
-    }
+    topSpot.Latitude = sumLatitude / topSpot.accidents.length
+    topSpot.Longitude = sumLongitude / topSpot.accidents.length
 
-  getTopSpots: () ->
-    (this.groupToSpot(group) for group in this.getTopGroups())
-
-  getHeadingString: (topSpots) ->
+  _getHeadingString: (topSpots) ->
     locations = (topSpots.length == 1 && 'location' || 'locations')
-    routes = (@topGroups.bicycling? && @topGroups.driving? && 'routes' || 'route')
+    routes = (@topGroupsByMode.bicycling? && @topGroupsByMode.driving? && 'routes' || 'route')
 
     "Most accident-prone #{locations} along your #{routes}"
 
-  getTopSpotString: (topSpot) ->
+  _getTopSpotString: (topSpot) ->
     accidents = topSpot.accidents.length > 0 && 'accidents' || 'accident'
     if topSpot.mode == 'both'
-      "#{topSpot.accidents.count} #{accidents} along your driving and bicycling routes"
+      "#{topSpot.accidents.length} #{accidents} along your driving and bicycling routes"
     else
-      "#{topSpot.accidents.count} #{accidents} along your #{topSpot.mode} route"
+      "#{topSpot.accidents.length} #{accidents} along your #{topSpot.mode} route"
 
-  getGeocoder: () ->
+  _getGeocoder: () ->
     @geocoder ||= new google.maps.Geocoder()
 
-  renderTopSpot: (topSpot) ->
+  _geocoderResultsToAddress: (results) ->
+    for type in [ 'intersection', 'bus_station', 'transit_station', 'neighborhood' ]
+      for result in results
+        if type in result.types
+          return result.formatted_address.split(/,/)[0]
+
+    results[0].formatted_address.split(/,/)[0]
+
+  _renderTopSpot: (topSpot) ->
     $html = $('<li><div class="image-container"><img src="" alt="" /></div><div class="address"></div><div class="count"></div></li>')
     $html.find('.address').text("#{topSpot.Latitude},#{topSpot.Longitude}")
-    $html.find('.count').text(this.getTopSpotString(topSpot))
+    $html.find('.count').text(this._getTopSpotString(topSpot))
 
-    this.getGeocoder().geocode({
+    this._getGeocoder().geocode({
       latLng: new google.maps.LatLng(topSpot.Latitude, topSpot.Longitude)
     }, (results, status) =>
       if status == google.maps.GeocoderStatus.OK
-        $html.find('.address').text(results[0].address_components[0].long_name)
+        address = this._geocoderResultsToAddress(results)
+        $html.find('.address').text(address)
     )
 
     # Wait for the image to be drawn so we know its height
@@ -805,17 +817,16 @@ class WorstLocationsRenderer
 
     $html
 
-  render: () ->
+  _fillDiv: (topSpots) ->
     $div = $(@div)
 
-    topSpots = this.getTopSpots()
+    $div.empty()
+
     if !topSpots.length
       $div.hide()
       return
 
-    h2String = this.getHeadingString(topSpots)
-
-    $div.empty()
+    h2String = this._getHeadingString(topSpots)
     $h2 = $('<h2></h2>')
     $h2.text(h2String)
     $div.append($h2)
@@ -823,11 +834,52 @@ class WorstLocationsRenderer
     $ul = $('<ul></ul>')
 
     for topSpot, i in topSpots
-      $li = this.renderTopSpot(topSpot, i)
+      $li = this._renderTopSpot(topSpot, i)
       $li.addClass("top-spot-#{i}")
       $ul.append($li)
 
     $div.append($ul)
+    $div.show()
+
+  _topSpotsToMarkers: (topSpots) ->
+    markers = []
+
+    for topSpot in topSpots
+      marker = new google.maps.Marker({
+        clickable: false,
+        flat: true,
+        position: new google.maps.LatLng(topSpot.Latitude, topSpot.Longitude),
+        title: 'Accident-prone location'
+      })
+      markers.push(marker)
+
+    markers
+
+  refresh: () ->
+    # Assume accidents array only changes from (set 1) -> (undefined) -> (set 2)
+    # This optimizes a common case, (set 1) -> (set 1)
+    changed = false
+
+    for mode in [ 'bicycling', 'driving' ]
+      if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode)
+        # There are accidents we want to render
+        if !@topGroupsByMode[mode]?
+          # And we aren't rendering them
+          @topGroupsByMode[mode] = this._accidentsToTopGroups(@state.accidents[mode])
+          changed = true
+      else
+        # There's a lack of accidents to render
+        if @topGroupsByMode[mode]?
+          # But we're rendering them
+          delete @topGroupsByMode[mode]
+          changed = true
+
+    if changed
+      (marker.setMap(null) for marker in @markers)
+      topSpots = this._getTopSpots()
+      this._fillDiv(topSpots)
+      @markers = this._topSpotsToMarkers(topSpots)
+      (marker.setMap(@map) for marker in @markers)
 
 class Manager
   constructor: (@map, @origin, @destination, @city, chartLink, dataLink, worstLocationsDiv, options=undefined) ->
@@ -851,15 +903,7 @@ class Manager
     if dataLink?
       new AccidentsTableRenderer(@state, dataLink)
 
-    @worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv)
-
-    @state.onChange 'accidents', (mode, accidents) =>
-      @worstLocationsRenderer.clearAccidents()
-
-      if accidents?
-        @worstLocationsRenderer.addAccidents(mode, accidents)
-
-      @worstLocationsRenderer.render()
+    new WorstLocationsRenderer(@state, worstLocationsDiv, @map)
 
   setCity: (@city) ->
     @state.setCity(city)

@@ -1,5 +1,6 @@
 (function() {
-  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText;
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText,
+    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   URL = 'http://localhost:8000/%{city}';
 
@@ -840,22 +841,23 @@
 
   WorstLocationsRenderer = (function() {
 
-    function WorstLocationsRenderer(div) {
+    function WorstLocationsRenderer(state, div, map) {
+      var _this = this;
+      this.state = state;
       this.div = div;
-      this.topGroups = {};
+      this.map = map;
+      this.topGroupsByMode = {};
       this.maxLocations = 3;
+      this.markers = [];
+      this.state.onChange('accidents', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('mode', function() {
+        return _this.refresh();
+      });
     }
 
-    WorstLocationsRenderer.prototype.clearAccidents = function(mode) {
-      if (mode == null) mode = void 0;
-      if (!(mode != null)) {
-        return this.topGroups = {};
-      } else {
-        return delete this.topGroups[mode];
-      }
-    };
-
-    WorstLocationsRenderer.prototype.addAccidents = function(mode, accidents) {
+    WorstLocationsRenderer.prototype._accidentsToTopGroups = function(accidents) {
       var a, accident, d, distance_along_path, i, objs, results, sorted, topGroup, _i, _j, _len, _len2, _len3, _ref, _ref2, _ref3, _ref4, _ref5;
       objs = [];
       results = [];
@@ -892,110 +894,127 @@
           }
         }
       }
-      return this.topGroups[mode] = results;
+      return results;
     };
 
-    WorstLocationsRenderer.prototype.getTopGroups = function() {
-      var accident, idToGroup, mode, topGroup, topGroups, topGroupsTotal, totalTopGroup, _i, _j, _k, _len, _len2, _len3, _ref;
-      idToGroup = {};
-      topGroupsTotal = [];
-      _ref = this.topGroups;
-      for (mode in _ref) {
-        topGroups = _ref[mode];
-        for (_i = 0, _len = topGroups.length; _i < _len; _i++) {
-          topGroup = topGroups[_i];
-          totalTopGroup = void 0;
-          for (_j = 0, _len2 = topGroup.length; _j < _len2; _j++) {
-            accident = topGroup[_j];
-            if (idToGroup[accident.id] != null) {
-              totalTopGroup = idToGroup[accident.id];
-              totalTopGroup.mode = 'both';
+    WorstLocationsRenderer.prototype._getActiveModes = function() {
+      if (this.state.mode === 'both') {
+        return ['bicycling', 'driving'];
+      } else {
+        return [this.state.mode];
+      }
+    };
+
+    WorstLocationsRenderer.prototype._getTopSpots = function() {
+      var accident, idToSpot, mode, topGroup, topSpot, topSpots, _i, _j, _k, _l, _len, _len2, _len3, _len4, _len5, _m, _ref, _ref2;
+      idToSpot = {};
+      topSpots = [];
+      _ref = this._getActiveModes();
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mode = _ref[_i];
+        if (this.topGroupsByMode[mode] == null) continue;
+        _ref2 = this.topGroupsByMode[mode];
+        for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+          topGroup = _ref2[_j];
+          topSpot = void 0;
+          for (_k = 0, _len3 = topGroup.length; _k < _len3; _k++) {
+            accident = topGroup[_k];
+            if (idToSpot[accident.id] != null) {
+              topSpot = idToSpot[accident.id];
+              topSpot.mode = 'both';
               break;
             }
           }
-          if (!(totalTopGroup != null)) {
-            totalTopGroup = {
+          if (!(topSpot != null)) {
+            topSpot = {
               mode: mode,
               accidents: []
             };
-            topGroupsTotal.push(totalTopGroup);
+            topSpots.push(topSpot);
           }
-          for (_k = 0, _len3 = topGroup.length; _k < _len3; _k++) {
-            accident = topGroup[_k];
-            if (!(idToGroup[accident.id] != null)) {
-              idToGroup[accident.id] = totalTopGroup;
-              totalTopGroup.accidents.push(accident);
+          for (_l = 0, _len4 = topGroup.length; _l < _len4; _l++) {
+            accident = topGroup[_l];
+            if (!(idToSpot[accident.id] != null)) {
+              idToSpot[accident.id] = topSpot;
+              topSpot.accidents.push(accident);
             }
           }
         }
       }
-      topGroupsTotal.sort(function(a, b) {
+      topSpots.sort(function(a, b) {
         return b.length - a.length;
       });
-      return topGroupsTotal.slice(0, 3);
+      topSpots = topSpots.slice(0, 3);
+      for (_m = 0, _len5 = topSpots.length; _m < _len5; _m++) {
+        topSpot = topSpots[_m];
+        this._fillLocation(topSpot);
+      }
+      return topSpots;
     };
 
-    WorstLocationsRenderer.prototype.groupToSpot = function(group) {
+    WorstLocationsRenderer.prototype._fillLocation = function(topSpot) {
       var accident, sumLatitude, sumLongitude, _i, _len, _ref;
       sumLatitude = 0;
       sumLongitude = 0;
-      _ref = group.accidents;
+      _ref = topSpot.accidents;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         accident = _ref[_i];
         sumLatitude += accident.Latitude;
         sumLongitude += accident.Longitude;
       }
-      return {
-        Latitude: sumLatitude / group.accidents.length,
-        Longitude: sumLongitude / group.accidents.length,
-        mode: group.mode,
-        accidents: group.accidents
-      };
+      topSpot.Latitude = sumLatitude / topSpot.accidents.length;
+      return topSpot.Longitude = sumLongitude / topSpot.accidents.length;
     };
 
-    WorstLocationsRenderer.prototype.getTopSpots = function() {
-      var group, _i, _len, _ref, _results;
-      _ref = this.getTopGroups();
-      _results = [];
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        group = _ref[_i];
-        _results.push(this.groupToSpot(group));
-      }
-      return _results;
-    };
-
-    WorstLocationsRenderer.prototype.getHeadingString = function(topSpots) {
+    WorstLocationsRenderer.prototype._getHeadingString = function(topSpots) {
       var locations, routes;
       locations = topSpots.length === 1 && 'location' || 'locations';
-      routes = (this.topGroups.bicycling != null) && (this.topGroups.driving != null) && 'routes' || 'route';
+      routes = (this.topGroupsByMode.bicycling != null) && (this.topGroupsByMode.driving != null) && 'routes' || 'route';
       return "Most accident-prone " + locations + " along your " + routes;
     };
 
-    WorstLocationsRenderer.prototype.getTopSpotString = function(topSpot) {
+    WorstLocationsRenderer.prototype._getTopSpotString = function(topSpot) {
       var accidents;
       accidents = topSpot.accidents.length > 0 && 'accidents' || 'accident';
       if (topSpot.mode === 'both') {
-        return "" + topSpot.accidents.count + " " + accidents + " along your driving and bicycling routes";
+        return "" + topSpot.accidents.length + " " + accidents + " along your driving and bicycling routes";
       } else {
-        return "" + topSpot.accidents.count + " " + accidents + " along your " + topSpot.mode + " route";
+        return "" + topSpot.accidents.length + " " + accidents + " along your " + topSpot.mode + " route";
       }
     };
 
-    WorstLocationsRenderer.prototype.getGeocoder = function() {
+    WorstLocationsRenderer.prototype._getGeocoder = function() {
       return this.geocoder || (this.geocoder = new google.maps.Geocoder());
     };
 
-    WorstLocationsRenderer.prototype.renderTopSpot = function(topSpot) {
+    WorstLocationsRenderer.prototype._geocoderResultsToAddress = function(results) {
+      var result, type, _i, _j, _len, _len2, _ref;
+      _ref = ['intersection', 'bus_station', 'transit_station', 'neighborhood'];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        type = _ref[_i];
+        for (_j = 0, _len2 = results.length; _j < _len2; _j++) {
+          result = results[_j];
+          if (__indexOf.call(result.types, type) >= 0) {
+            return result.formatted_address.split(/,/)[0];
+          }
+        }
+      }
+      return results[0].formatted_address.split(/,/)[0];
+    };
+
+    WorstLocationsRenderer.prototype._renderTopSpot = function(topSpot) {
       var $html,
         _this = this;
       $html = $('<li><div class="image-container"><img src="" alt="" /></div><div class="address"></div><div class="count"></div></li>');
       $html.find('.address').text("" + topSpot.Latitude + "," + topSpot.Longitude);
-      $html.find('.count').text(this.getTopSpotString(topSpot));
-      this.getGeocoder().geocode({
+      $html.find('.count').text(this._getTopSpotString(topSpot));
+      this._getGeocoder().geocode({
         latLng: new google.maps.LatLng(topSpot.Latitude, topSpot.Longitude)
       }, function(results, status) {
+        var address;
         if (status === google.maps.GeocoderStatus.OK) {
-          return $html.find('.address').text(results[0].address_components[0].long_name);
+          address = _this._geocoderResultsToAddress(results);
+          return $html.find('.address').text(address);
         }
       });
       window.setTimeout(function() {
@@ -1007,27 +1026,80 @@
       return $html;
     };
 
-    WorstLocationsRenderer.prototype.render = function() {
-      var $div, $h2, $li, $ul, h2String, i, topSpot, topSpots, _len;
+    WorstLocationsRenderer.prototype._fillDiv = function(topSpots) {
+      var $div, $h2, $li, $ul, h2String, i, topSpot, _len;
       $div = $(this.div);
-      topSpots = this.getTopSpots();
+      $div.empty();
       if (!topSpots.length) {
         $div.hide();
         return;
       }
-      h2String = this.getHeadingString(topSpots);
-      $div.empty();
+      h2String = this._getHeadingString(topSpots);
       $h2 = $('<h2></h2>');
       $h2.text(h2String);
       $div.append($h2);
       $ul = $('<ul></ul>');
       for (i = 0, _len = topSpots.length; i < _len; i++) {
         topSpot = topSpots[i];
-        $li = this.renderTopSpot(topSpot, i);
+        $li = this._renderTopSpot(topSpot, i);
         $li.addClass("top-spot-" + i);
         $ul.append($li);
       }
-      return $div.append($ul);
+      $div.append($ul);
+      return $div.show();
+    };
+
+    WorstLocationsRenderer.prototype._topSpotsToMarkers = function(topSpots) {
+      var marker, markers, topSpot, _i, _len;
+      markers = [];
+      for (_i = 0, _len = topSpots.length; _i < _len; _i++) {
+        topSpot = topSpots[_i];
+        marker = new google.maps.Marker({
+          clickable: false,
+          flat: true,
+          position: new google.maps.LatLng(topSpot.Latitude, topSpot.Longitude),
+          title: 'Accident-prone location'
+        });
+        markers.push(marker);
+      }
+      return markers;
+    };
+
+    WorstLocationsRenderer.prototype.refresh = function() {
+      var changed, marker, mode, topSpots, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3, _results;
+      changed = false;
+      _ref = ['bicycling', 'driving'];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        mode = _ref[_i];
+        if ((this.state.accidents[mode] != null) && (this.state.mode === 'both' || this.state.mode === mode)) {
+          if (!(this.topGroupsByMode[mode] != null)) {
+            this.topGroupsByMode[mode] = this._accidentsToTopGroups(this.state.accidents[mode]);
+            changed = true;
+          }
+        } else {
+          if (this.topGroupsByMode[mode] != null) {
+            delete this.topGroupsByMode[mode];
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        _ref2 = this.markers;
+        for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+          marker = _ref2[_j];
+          marker.setMap(null);
+        }
+        topSpots = this._getTopSpots();
+        this._fillDiv(topSpots);
+        this.markers = this._topSpotsToMarkers(topSpots);
+        _ref3 = this.markers;
+        _results = [];
+        for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
+          marker = _ref3[_k];
+          _results.push(marker.setMap(this.map));
+        }
+        return _results;
+      }
     };
 
     return WorstLocationsRenderer;
@@ -1037,7 +1109,6 @@
   Manager = (function() {
 
     function Manager(map, origin, destination, city, chartLink, dataLink, worstLocationsDiv, options) {
-      var _this = this;
       this.map = map;
       this.origin = origin;
       this.destination = destination;
@@ -1057,14 +1128,7 @@
       new AccidentsMarkerRenderer(this.state, this.map);
       if (chartLink != null) new TrendChartRenderer(this.state, chartLink);
       if (dataLink != null) new AccidentsTableRenderer(this.state, dataLink);
-      this.worstLocationsRenderer = new WorstLocationsRenderer(worstLocationsDiv);
-      this.state.onChange('accidents', function(mode, accidents) {
-        _this.worstLocationsRenderer.clearAccidents();
-        if (accidents != null) {
-          _this.worstLocationsRenderer.addAccidents(mode, accidents);
-        }
-        return _this.worstLocationsRenderer.render();
-      });
+      new WorstLocationsRenderer(this.state, worstLocationsDiv, this.map);
     }
 
     Manager.prototype.setCity = function(city) {
