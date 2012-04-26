@@ -26,7 +26,7 @@ class DbTable:
 
         sql = 'CREATE TABLE IF NOT EXISTS "%s" (id SERIAL PRIMARY KEY, %s)' % (
             self.schema.name,
-            ', '.join([ '"%s" %s %s' % (sr.name, sr.sqlType, sr.sqlExtra) for sr in self.schema.rows ])
+            ', '.join([ '"%s" %s %s' % (sr.name, sr.sqlType, sr.sqlExtra) for sr in self.schema.rows if sr.name != 'id' ])
         )
         self.logger.info('Execute: %s' % (sql,))
         cursor.execute(sql)

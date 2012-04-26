@@ -43,6 +43,19 @@ DB_SCHEMAS = {
         ('Longitude', 'FLOAT')
     ),
     'ottawa': (
+        ('id', 'INT', 'NOT NULL'),
+        ('Time', 'TIMESTAMP', 'NOT NULL'),
+        ('Address', 'VARCHAR', 'NOT NULL'),
+        ('Impact type', 'VARCHAR'),
+        ('Environment', 'VARCHAR'),
+        ('Light', 'VARCHAR'),
+        ('Traffic control', 'VARCHAR'),
+        ('Severity', 'VARCHAR'),
+        ('Number of vehicles', 'INT'),
+        ('Number of injured persons', 'INT'),
+        ('Number of pedestrians', 'INT'),
+        ('Latitude', 'FLOAT'),
+        ('Longitude', 'FLOAT')
     ),
     'montreal': (
         ('Time', 'TIMESTAMP', 'NOT NULL'),
