@@ -520,8 +520,10 @@
         if (heading === 'id') continue;
         if (heading === 'distance_along_path') continue;
         if (heading === 'Time') continue;
-        if (heading === 'Latitude') continue;
-        if (heading === 'Longitude') continue;
+        if (this.state.city !== 'Toronto') {
+          if (heading === 'Latitude') continue;
+          if (heading === 'Longitude') continue;
+        }
         headings.push(heading);
       }
       headings.sort();

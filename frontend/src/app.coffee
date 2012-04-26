@@ -336,53 +336,6 @@ class ChartSeriesMaker
   getSeries: () ->
     ([ +k, v ] for k, v of @data)
 
-#class Renderer
-#  clearAccidents: (mode = undefined) ->
-#    if !mode?
-#      @accidents = {}
-#    else
-#      delete @accidents[mode]
-#
-#  addAccidents: (mode, accidents) ->
-#    @accidents[mode] = accidents
-#
-#class SummaryRenderer extends Renderer
-#  constructor: (@div) ->
-#    @accidents = {}
-#    @status = 'no-input'
-#
-#  setStatus: (@status) ->
-#
-#  render: () ->
-#    html = ''
-#
-#    if @status == 'no-input'
-#      html = 'Choose an origin and destination...'
-#    else
-#      bicycling = @accidents.bicycling?
-#      driving = @accidents.driving?
-#
-#      nBicycling = @accidents.bicycling.length if bicycling
-#      nDriving = @accidents.driving.length if driving
-#
-#      if !bicycling and !driving
-#        html = 'Waiting for server...'
-#      else
-#        if !bicycling
-#          html = 'Waiting for server for bicycling data...'
-#        else if !driving
-#          html = 'waiting for server for driving data...'
-#        else if nBicycling == 0 && nDriving != 0
-#          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and none for the <span class=\"bicycling\">bicycling</span> route."
-#        else if nDriving == 0 && nBicycling != 0
-#          html = "There have been <span class=\"bicycling\">#{nBicycling}</span> reported accidents involving cyclists along the <span class=\"bicycling\">bicycling</span> route and none for the <span class=\"driving\">driving</span> route."
-#        else if nDriving == 0 && nBicycling == 0
-#          html = "There have been no reported accidents involving cyclists along either the <span class=\"bicycling\">bicycling</span> or <span class=\"driving\">driving</span> routes."
-#        else
-#          html = "There have been <span class=\"driving\">#{nDriving}</span> reported accidents involving cyclists along the <span class=\"driving\">driving</span> route and <span class=\"bicycling\">#{nBicycling}</span> along the <span class=\"bicycling\">bicycling</span> route."
-#
-#    $(@div).html(html)
-
 class AccidentsTableRenderer
   constructor: (@state, link) ->
     $(link).on 'click', (e) =>
@@ -416,10 +369,11 @@ class AccidentsTableRenderer
       continue if heading == 'distance_along_path'
       continue if heading == 'Time'
 
-      # We can't give Google-provided geocoded data
-      # TODO: make exception for Toronto?
-      continue if heading == 'Latitude'
-      continue if heading == 'Longitude'
+      # We can't give Google-provided geocoded data (all cities but Toronto)
+      if @state.city != 'Toronto'
+        continue if heading == 'Latitude'
+        continue if heading == 'Longitude'
+
       headings.push(heading)
 
     headings.sort()
