@@ -42,7 +42,7 @@
     ottawa: {
       latitude: 45.4214,
       longitude: -75.6919,
-      zoom: 12,
+      zoom: 13,
       minYear: 2001,
       maxYear: 2010,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.962002, -76.355766), new google.maps.LatLng(45.536541, -75.246033))
@@ -58,7 +58,7 @@
     halifax: {
       latitude: 44.6479,
       longitude: -63.5744,
-      zoom: 12,
+      zoom: 13,
       minYear: 2007,
       maxYear: 2010,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.434570, -64.237190), new google.maps.LatLng(45.276489, -62.160469))
