@@ -103,16 +103,36 @@ class State
     @routes = {} # keyed by 'bicycling' and 'driving'
     @accidents = {} # keyed by 'bicycling' and 'driving'
     @listeners = {}
+    @frozen = {}
     # @routes is always set before @accidents
 
   onChange: (key, callback) ->
     @listeners[key] ||= []
     @listeners[key].push(callback)
 
-  _changed: (key, arg1 = undefined, arg2 = undefined) ->
-    callbacks = @listeners[key] || []
-    for callback in callbacks
-      callback(arg1, arg2)
+  # Delay running onChange callbacks on this key until thaw()
+  freeze: (key) ->
+    @frozen[key] = true if !@frozen[key]?
+
+  # Allow onChange callbacks to run on this key. If the property changed
+  # after freeze() was called, run them now.
+  thaw: (key) ->
+    return if !@frozen[key]?
+
+    if @frozen[key] is true
+      delete @frozen[key]
+    else
+      arg1 = @frozen[key][0]
+      delete @frozen[key]
+      this._changed(key, arg1)
+
+  _changed: (key, arg1 = undefined) ->
+    if @frozen[key]?
+      @frozen[key] = [ arg1 ]
+    else
+      callbacks = @listeners[key] || []
+      for callback in callbacks
+        callback(arg1)
 
   setCity: (city) ->
     this.clearAccidents()
@@ -167,29 +187,22 @@ class State
       this._changed('maxYear', @maxYear)
 
   setRoute: (key, directions) ->
-    this.clearAccidents(key)
-    this.routes[key] = directions
-    this._changed('routes', key, directions)
+    delete @accidents[key] if @accidents[key]?
+    @routes[key] = directions
+    this._changed('routes', @routes)
 
-  clearRoutes: (key=undefined) ->
-    if key
-      delete this.routes[key]
-      this._changed('routes', key, undefined)
-    else
-      this.routes = {}
-      this._changed('routes')
+  clearRoutes: () ->
+    @routes = {}
+    this._changed('routes', @routes)
 
   setAccidents: (key, accidents) ->
     this.accidents[key] = accidents
     this._changed('accidents', key, accidents)
 
-  clearAccidents: (key=undefined) ->
-    if key
-      delete this.accidents[key]
-      this._changed('accidents', key, undefined)
-    else
-      this.accidents = {}
-      this._changed('accidents')
+  clearAccidents: () ->
+    @accidents = {}
+    this._changed('accidents', @accidents)
+
 window.State = State
 
 class RouteFinder
@@ -862,6 +875,10 @@ syncOriginDestinationMarkers = (state, map) ->
       )
       title: (key == 'origin' && 'Start point' || 'End point'),
     })
+    google.maps.event.addListener markers[key], 'dragstart', () ->
+      state.freeze('routes')
+    google.maps.event.addListener markers[key], 'dragend', () ->
+      state.thaw('routes')
 
   google.maps.event.addListener markers.origin, 'position_changed', () ->
     movedByUs = true

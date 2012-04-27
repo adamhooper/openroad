@@ -95,6 +95,7 @@
       this.routes = {};
       this.accidents = {};
       this.listeners = {};
+      this.frozen = {};
     }
 
     State.prototype.onChange = function(key, callback) {
@@ -103,17 +104,36 @@
       return this.listeners[key].push(callback);
     };
 
-    State.prototype._changed = function(key, arg1, arg2) {
+    State.prototype.freeze = function(key) {
+      if (!(this.frozen[key] != null)) return this.frozen[key] = true;
+    };
+
+    State.prototype.thaw = function(key) {
+      var arg1;
+      if (!(this.frozen[key] != null)) return;
+      if (this.frozen[key] === true) {
+        return delete this.frozen[key];
+      } else {
+        arg1 = this.frozen[key][0];
+        delete this.frozen[key];
+        return this._changed(key, arg1);
+      }
+    };
+
+    State.prototype._changed = function(key, arg1) {
       var callback, callbacks, _i, _len, _results;
       if (arg1 == null) arg1 = void 0;
-      if (arg2 == null) arg2 = void 0;
-      callbacks = this.listeners[key] || [];
-      _results = [];
-      for (_i = 0, _len = callbacks.length; _i < _len; _i++) {
-        callback = callbacks[_i];
-        _results.push(callback(arg1, arg2));
+      if (this.frozen[key] != null) {
+        return this.frozen[key] = [arg1];
+      } else {
+        callbacks = this.listeners[key] || [];
+        _results = [];
+        for (_i = 0, _len = callbacks.length; _i < _len; _i++) {
+          callback = callbacks[_i];
+          _results.push(callback(arg1));
+        }
+        return _results;
       }
-      return _results;
     };
 
     State.prototype.setCity = function(city) {
@@ -180,20 +200,14 @@
     };
 
     State.prototype.setRoute = function(key, directions) {
-      this.clearAccidents(key);
+      if (this.accidents[key] != null) delete this.accidents[key];
       this.routes[key] = directions;
-      return this._changed('routes', key, directions);
+      return this._changed('routes', this.routes);
     };
 
-    State.prototype.clearRoutes = function(key) {
-      if (key == null) key = void 0;
-      if (key) {
-        delete this.routes[key];
-        return this._changed('routes', key, void 0);
-      } else {
-        this.routes = {};
-        return this._changed('routes');
-      }
+    State.prototype.clearRoutes = function() {
+      this.routes = {};
+      return this._changed('routes', this.routes);
     };
 
     State.prototype.setAccidents = function(key, accidents) {
@@ -201,15 +215,9 @@
       return this._changed('accidents', key, accidents);
     };
 
-    State.prototype.clearAccidents = function(key) {
-      if (key == null) key = void 0;
-      if (key) {
-        delete this.accidents[key];
-        return this._changed('accidents', key, void 0);
-      } else {
-        this.accidents = {};
-        return this._changed('accidents');
-      }
+    State.prototype.clearAccidents = function() {
+      this.accidents = {};
+      return this._changed('accidents', this.accidents);
     };
 
     return State;
@@ -1169,6 +1177,12 @@
         flat: true,
         icon: new google.maps.MarkerImage("icons/marker-" + key + ".png"),
         title: key === 'origin' && 'Start point' || 'End point'
+      });
+      google.maps.event.addListener(markers[key], 'dragstart', function() {
+        return state.freeze('routes');
+      });
+      google.maps.event.addListener(markers[key], 'dragend', function() {
+        return state.thaw('routes');
       });
     }
     google.maps.event.addListener(markers.origin, 'position_changed', function() {
