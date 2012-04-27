@@ -902,7 +902,7 @@ window.Manager = Manager
 
 _address_form_abort_clicking_on_map = undefined # only one clicking at a time
 
-$.fn.address_form = (originOrDestination, state, map) ->
+$.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
   property = originOrDestination
   setter = originOrDestination == 'origin' && 'setOrigin' || 'setDestination'
   aPointString = originOrDestination == 'origin' && 'a start point' || 'an end point'
@@ -984,6 +984,8 @@ $.fn.address_form = (originOrDestination, state, map) ->
 
   $form.on 'submit blur', (e) ->
     e.preventDefault()
+    _address_form_abort_clicking_on_map?()
+    _address_form_abort_clicking_on_map = undefined
     maybeLookupAddress()
 
   $a.on 'click', (e) ->
@@ -999,6 +1001,7 @@ $.fn.address_form = (originOrDestination, state, map) ->
       _address_form_abort_clicking_on_map()
       set(e.latLng)
       lookupLatLng(e.latLng)
+      callback() if callback
 
     _address_form_abort_clicking_on_map = () ->
       google.maps.event.removeListener(mapListener)

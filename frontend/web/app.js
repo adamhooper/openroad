@@ -1197,8 +1197,9 @@
 
   _address_form_abort_clicking_on_map = void 0;
 
-  $.fn.address_form = function(originOrDestination, state, map) {
+  $.fn.address_form = function(originOrDestination, state, map, callback) {
     var $a, $error, $form, $input, $status, aPointString, aText, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, maybeLookupAddress, property, set, setError, setStatus, setter;
+    if (callback == null) callback = void 0;
     property = originOrDestination;
     setter = originOrDestination === 'origin' && 'setOrigin' || 'setDestination';
     aPointString = originOrDestination === 'origin' && 'a start point' || 'an end point';
@@ -1280,6 +1281,10 @@
     };
     $form.on('submit blur', function(e) {
       e.preventDefault();
+      if (typeof _address_form_abort_clicking_on_map === "function") {
+        _address_form_abort_clicking_on_map();
+      }
+      _address_form_abort_clicking_on_map = void 0;
       return maybeLookupAddress();
     });
     return $a.on('click', function(e) {
@@ -1296,7 +1301,8 @@
       mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
         _address_form_abort_clicking_on_map();
         set(e.latLng);
-        return lookupLatLng(e.latLng);
+        lookupLatLng(e.latLng);
+        if (callback) return callback();
       });
       _address_form_abort_clicking_on_map = function() {
         google.maps.event.removeListener(mapListener);

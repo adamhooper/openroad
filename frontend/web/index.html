@@ -413,9 +413,10 @@
       var manager = new Manager(map, state, chartLink, dataLink, worstLocationsDiv);
 
       $('form#mode').mode_form(state);
-      $('form#origin').address_form('origin', state, map);
+      $('form#origin').address_form('origin', state, map, function() { $('form#destination a').click(); });
       $('form#destination').address_form('destination', state, map);
       $('div.year div.slider').year_range_slider(state);
+      $('form#origin a').click();
 
       $('#city a').click(function(e) {
         e.preventDefault();
