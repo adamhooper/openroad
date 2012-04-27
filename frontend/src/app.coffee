@@ -3,9 +3,9 @@ DEFAULT_MIN_YEAR = 2007
 DEFAULT_MAX_YEAR = 2011
 
 COLORS = {
-  driving: '#cccc00',
-  bicycling: '#00cc00',
-  both: '#77cc00',
+  driving: '#0e3b5d',
+  bicycling: '#819b39',
+  both: '#f9f298',
 }
 
 CITIES = {
@@ -492,17 +492,6 @@ class AccidentsMarkerRenderer
     clusterUrlRoot = "#{window.location.protocol}//#{window.location.host}#{window.location.pathname.replace(/[^\/]*$/, '')}/icons"
 
     calculateMarkerStyleIndex = (markers, nIconStyles) ->
-      # There are 9 styles:
-      # 0: driving, small
-      # 1: driving, medium
-      # 2: driving, large
-      # 3: bicycling, small
-      # 4: bicycling, medium
-      # 5: bicycling, large
-      # 6: both, small
-      # 7: both, medium
-      # 8: both, large
-
       accidentsPath = undefined
       for marker in markers
         if !accidentsPath?
@@ -511,51 +500,39 @@ class AccidentsMarkerRenderer
           accidentsPath = 'both'
           break
 
-      accidentsPathToSmallestIconIndex = {
-        driving: 0,
-        bicycling: 3,
-        both: 6,
-      }
-
-      iconIndexAddition = 0
-      if markers.length > 1
-        iconIndexAddition += 1
-      if markers.length > 3
-        iconIndexAddition += 1
+      # index starts at 1. Ick.
+      index = {
+        bicycling: 1,
+        driving: 2,
+        both: 3,
+      }[accidentsPath]
 
       text = "#{markers.length}"
-      text = '1' if markers.length == 1
-
-      index = accidentsPathToSmallestIconIndex[accidentsPath] + iconIndexAddition
+      text = ' ' if markers.length == 1
 
       {
         text: text,
-        index: index + 1
+        index: index
       }
 
-    makeIconStyle = (mode, index, size) ->
+    makeIconStyle = (mode, size) ->
       {
         width: size,
         height: size,
-        textSize: size - 4
-        url: "#{clusterUrlRoot}/cluster-#{mode}-#{index+1}.png",
+        textSize: size - 8,
+        textColor: (mode == 'both' && '#000000' || '#ffffff'),
+        url: "#{clusterUrlRoot}/marker-accident-#{mode}.png",
       }
 
     iconStyles = [
-      makeIconStyle('driving', 0, 13),
-      makeIconStyle('driving', 1, 15),
-      makeIconStyle('driving', 2, 17),
-      makeIconStyle('bicycling', 0, 13),
-      makeIconStyle('bicycling', 1, 15),
-      makeIconStyle('bicycling', 2, 17),
-      makeIconStyle('both', 0, 13),
-      makeIconStyle('both', 1, 15),
-      makeIconStyle('both', 2, 17),
+      makeIconStyle('bicycling', 19),
+      makeIconStyle('driving', 19),
+      makeIconStyle('both', 19),
     ]
 
     new MarkerClusterer(@map, [], {
       averageCenter: true,
-      gridSize: 15,
+      gridSize: 13,
       styles: iconStyles,
       calculator: calculateMarkerStyleIndex,
       minimumClusterSize: 1,
@@ -807,6 +784,7 @@ class WorstLocationsRenderer
         clickable: false,
         flat: true,
         position: new google.maps.LatLng(topSpot.Latitude, topSpot.Longitude),
+        icon: new google.maps.MarkerImage('./icons/marker-top-spot.png'),
         title: 'Accident-prone location'
       })
       markers.push(marker)
