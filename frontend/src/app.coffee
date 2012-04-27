@@ -705,7 +705,7 @@ class WorstLocationsRenderer
     "Most accident-prone #{locations} along your #{routes}"
 
   _getTopSpotString: (topSpot) ->
-    accidents = topSpot.accidents.length > 0 && 'accidents' || 'accident'
+    accidents = topSpot.accidents.length == 1 && 'accident' || 'accidents'
     if topSpot.mode == 'both'
       "#{topSpot.accidents.length} #{accidents} along your driving and bicycling routes"
     else
