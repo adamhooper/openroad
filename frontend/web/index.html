@@ -9,6 +9,8 @@
     <style type="text/css">
       html, body {
         width: 950px;
+        margin: 0 auto;
+        padding: 0;
       }
 
       div.forms {
@@ -134,7 +136,7 @@
         color: #223b5d;
         text-decoration: none;
         display: block;
-        padding-bottom: 80px;
+        padding-bottom: 83px;
       }
 
       div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities, div#details div.reset {
@@ -299,12 +301,50 @@
       }
 
       ul#city li {
-        display: inline-block;
-        width: 14%;
+        float: left;
+        width: 150px;
+        height: 90px;
+        padding-left: 10px;
       }
 
-      ul#city li.selected {
+      ul#city li.first {
+        padding-left: 0;
+      }
+
+      ul#city a {
+        display: block;
+        height: 90px;
+        line-height: 90px;
+        font-size: 70px;
+        text-align: center;
+        font-family: 'PT Sans Narrow', sans-serif;
         font-weight: bold;
+        text-transform: uppercase;
+        text-decoration: none;
+        color: white;
+      }
+
+      ul#city li.selected a {
+        color: #f9f298;
+      }
+
+      ul#city a.vancouver {
+        background: url('http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=49.26901,-123.10065');
+      }
+      ul#city a.calgary {
+        background: url('http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=51.03783,-114.09467');
+      }
+      ul#city a.toronto {
+        background: url('http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=43.665122,-79.411213');
+      }
+      ul#city a.ottawa {
+        background: url('http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=45.372683,-75.664255');
+      }
+      ul#city a.montreal {
+        background: url('http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=45.517061,-73.564721');
+      }
+      ul#city a.halifax {
+        background: url('http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=44.615891,-63.614783');
       }
 
       div#data-dialog {
@@ -365,7 +405,7 @@
     </div>
     <div id="map"></div>
     <div id="summary"></div>
-    <div id="details" style="overflow: hidden;">
+    <div id="details" style="display:none;">
       <div class="year">
         <h2>Date range</h2>
         <div class="slider"></div>
@@ -386,14 +426,13 @@
 
       <div id="worst-locations"></div>
     </div>
-    <p>Choose your city:</p>
     <ul id="city">
-      <li><a href="#vancouver">Vancouver</a></li>
-      <li><a href="#calgary">Calgary</a></li>
-      <li class="selected"><a href="#toronto">Toronto</a></li>
-      <li><a href="#ottawa">Ottawa</a></li>
-      <li><a href="#montreal">Montreal</a></li>
-      <li><a href="#halifax">Halifax</a></li>
+      <li class="first"><a class="vancouver" href="#vancouver">VAN</a></li>
+      <li><a class="calgary" href="#calgary">CGY</a></li>
+      <li class="selected"><a class="toronto" href="#toronto">TOR</a></li>
+      <li><a class="ottawa" href="#ottawa">OTT</a></li>
+      <li><a class="montreal" href="#montreal">MTL</a></li>
+      <li><a class="halifax" href="#halifax">HFX</a></li>
     </ul>
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.7&sensor=true&key=AIzaSyDWrbWJ46ET44B2Z0UFdqsT3DbsZXKXuqU"></script>
     <script type="text/javascript" src="jquery-1.7.1.min.js"></script>
@@ -430,9 +469,20 @@
 
       $('div#details div.other-cities a').other_cities_a(state, $('ul#city'));
 
+      state.onChange('accidents', function(accidents) {
+        var $citySelector = $('ul#city');
+        var $details = $('div#details');
+        if (accidents === undefined) {
+          $details.hide();
+          $citySelector.show();
+        } else {
+          $details.show();
+          $citySelector.hide();
+        }
+      });
+
       $('#city a').click(function(e) {
         e.preventDefault();
-        e.stopPropagation();
         $a = $(e.target);
         $li = $a.parent();
         $ul = $li.parent();
