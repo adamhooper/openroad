@@ -12,7 +12,7 @@ sudo vmbuilder qemu ubuntu \
   --mem=1024 \
   --user=bikefile \
   --pass=bikefile \
-  --suite=oneiric \
+  --suite=precise \
   --flavour=virtual \
   --rootsize=1024 \
   --optsize=1024 \

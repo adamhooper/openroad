@@ -7,9 +7,9 @@ set -x
 DIR=`dirname $0`
 FILELIST="$DIR/files/FILES"
 
-UBUNTU_IMAGE_BASENAME='oneiric-server-cloudimg-amd64.img'
-UBUNTU_IMAGE_ARCHIVE_BASENAME='oneiric-server-cloudimg-amd64.tar.gz'
-UBUNTU_IMAGE_URL='http://uec-images.ubuntu.com/oneiric/current/'"$UBUNTU_IMAGE_ARCHIVE_BASENAME"
+UBUNTU_IMAGE_BASENAME='precise-server-cloudimg-amd64.img'
+UBUNTU_IMAGE_ARCHIVE_BASENAME='precise-server-cloudimg-amd64.tar.gz'
+UBUNTU_IMAGE_URL='http://uec-images.ubuntu.com/precise/current/'"$UBUNTU_IMAGE_ARCHIVE_BASENAME"
 UBUNTU_IMAGE_ARCHIVE_FILENAME="$DIR/$UBUNTU_IMAGE_ARCHIVE_BASENAME"
 UBUNTU_IMAGE_FILENAME="$DIR/$UBUNTU_IMAGE_BASENAME"
 APT_PROXY='http://127.0.0.1:3142/ubuntu'
@@ -41,16 +41,17 @@ cat "$FILELIST" | while read -a line; do
   sudo chown -R root:root "$MOUNT_DIR""$dest"
 done
 
+pg_dump -Fc -O -f "$MOUNT_DIR/opt/bikefile/bikefile-data.psql" bikefile
+
 sudo chown -R 1000:1000 "$MOUNT_DIR"/opt/bikefile
 
 sudo chroot "$MOUNT_DIR" update-rc.d bikefile_uwsgi defaults 80 80
 
-sudo chroot "$MOUNT_DIR" /usr/bin/env `cat "$DIR"/locale` locale-gen $LANG
+sudo chroot "$MOUNT_DIR" /usr/bin/env `cat "$DIR"/locale` locale-gen en_US.UTF-8
 
 # Install packages
 sudo chroot "$MOUNT_DIR" apt-get install \
   -y \
-  -o Acquire::http::Proxy=$APT_PROXY \
   postgresql-9.1-postgis \
   python-psycopg2 \
   uwsgi-plugin-python \
@@ -65,7 +66,12 @@ sudo chroot "$MOUNT_DIR" ln -sf /etc/nginx/sites-available/bikefile /etc/nginx/s
 sudo cp "$DIR"/files/postgresql.conf "$MOUNT_DIR"/etc/postgresql/9.1/main
 sudo chown root:root "$MOUNT_DIR"/etc/postgresql/9.1/main/postgresql.conf
 
+# nginx won't start unless the log directory exists
+sudo chroot "$MOUNT_DIR" mkdir -p /opt/bikefile/log
+sudo chroot "$MOUNT_DIR" chown 1000:1000 /opt/bikefile/log
+
 # Clean up
+sudo chroot "$MOUNT_DIR" apt-get clean
 sudo chroot "$MOUNT_DIR" umount /proc
 sudo rm "$MOUNT_DIR"/usr/sbin/policy-rc.d
 
