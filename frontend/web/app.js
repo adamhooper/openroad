@@ -200,7 +200,10 @@
     };
 
     State.prototype.setRoute = function(key, directions) {
-      if (this.accidents[key] != null) delete this.accidents[key];
+      if (this.accidents[key] != null) {
+        delete this.accidents[key];
+        this._changed('accidents', this.accidents);
+      }
       this.routes[key] = directions;
       return this._changed('routes', this.routes);
     };

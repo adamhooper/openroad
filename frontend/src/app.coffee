@@ -187,7 +187,10 @@ class State
       this._changed('maxYear', @maxYear)
 
   setRoute: (key, directions) ->
-    delete @accidents[key] if @accidents[key]?
+    if @accidents[key]?
+      delete @accidents[key]
+      this._changed('accidents', @accidents)
+
     @routes[key] = directions
     this._changed('routes', @routes)
 
