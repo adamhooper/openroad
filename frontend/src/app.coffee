@@ -1023,7 +1023,10 @@ $.fn.mode_form = (state) ->
       state.setMode(mode)
 
     state.onChange 'mode', () ->
-      $form.find("input[value=#{state.mode}]").attr('checked', 'checked')
+      $input = $form.find("input[value=#{state.mode}]")
+      $form.find('label').removeClass('selected')
+      $input.attr('checked', 'checked')
+      $input.closest('label').addClass('selected')
 
 $.fn.year_range_slider = (state) ->
   getRange = () ->

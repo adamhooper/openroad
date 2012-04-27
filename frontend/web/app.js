@@ -1347,7 +1347,11 @@
         return state.setMode(mode);
       });
       return state.onChange('mode', function() {
-        return $form.find("input[value=" + state.mode + "]").attr('checked', 'checked');
+        var $input;
+        $input = $form.find("input[value=" + state.mode + "]");
+        $form.find('label').removeClass('selected');
+        $input.attr('checked', 'checked');
+        return $input.closest('label').addClass('selected');
       });
     });
   };

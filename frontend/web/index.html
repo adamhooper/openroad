@@ -133,6 +133,32 @@
         width: 13em;
       }
 
+      form#mode input {
+        display: none;
+      }
+
+      form#mode label {
+        padding-left: 22px;
+        min-height: 18px;
+        margin-left: .5em;
+      }
+
+      form#mode label.selected {
+        font-weight: bold;
+      }
+
+      form#mode label.bicycling {
+        background: url('./icons/marker-accident-bicycling.png') no-repeat left center;
+      }
+
+      form#mode label.driving {
+        background: url('./icons/marker-accident-driving.png') no-repeat left center;
+      }
+
+      form#mode label.both {
+        background: url('./icons/marker-accident-both.png') no-repeat left center;
+      }
+
       div#map {
         width: 100%;
         height: 400px;
@@ -351,7 +377,7 @@
       <form id="mode">
         <h2>Set your transport</h2>
         <div class="options">
-          <label class="bicycling"><input type="radio" name="mode" value="bicycling" checked="checked" />bike</label>
+          <label class="bicycling selected"><input type="radio" name="mode" value="bicycling" checked="checked" />bike</label>
           <label class="driving"><input type="radio" name="mode" value="driving" />car</label>
           <label class="both"><input type="radio" name="mode" value="both" />both</label>
         </div>
