@@ -4,7 +4,7 @@ DEFAULT_MAX_YEAR = 2011
 
 COLORS = {
   driving: '#0e3b5d',
-  bicycling: '#819b39',
+  bicycling: '#a73438',
   both: '#f9f298',
 }
 
@@ -799,8 +799,14 @@ class WorstLocationsRenderer
       marker = new google.maps.Marker({
         clickable: false,
         flat: true,
+        optimized: false,
         position: new google.maps.LatLng(topSpot.Latitude, topSpot.Longitude),
-        icon: new google.maps.MarkerImage('./icons/marker-top-spot.png'),
+        icon: new google.maps.MarkerImage(
+          './icons/marker-top-spot.png',
+          new google.maps.Size(37, 28),
+          undefined,
+          new google.maps.Point(19, 14)
+        ),
         title: 'Accident-prone location'
       })
       markers.push(marker)
