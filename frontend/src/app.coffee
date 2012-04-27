@@ -838,6 +838,49 @@ class WorstLocationsRenderer
       @markers = this._topSpotsToMarkers(topSpots)
       (marker.setMap(@map) for marker in @markers)
 
+keepMapInStateBounds = (map, state) ->
+  fitMapToCityBounds = (city) ->
+    cityData = CITIES[city]
+    latLng = new google.maps.LatLng(cityData.latitude, cityData.longitude)
+    map.setCenter(latLng)
+    map.setZoom(cityData.zoom)
+
+  state.onChange 'city', (city) ->
+    fitMapToCityBounds(city)
+  fitMapToCityBounds(state.city)
+
+  extendMapBoundsToFitPosition = (latLng) ->
+    bounds = map.getBounds()
+    if !bounds.contains(latLng)
+      bounds.extend(latLng)
+      map.fitBounds(bounds)
+
+  for key in [ 'origin', 'destination' ]
+    state.onChange key, (position) ->
+      extendMapBoundsToFitPosition(position) if position?
+    extendMapBoundsToFitPosition(state[key]) if state[key]?
+
+syncOriginDestinationMarkers = (state, map) ->
+  keys = [ 'origin', 'destination' ]
+  markers = {}
+
+  sync = (key, position) ->
+    if position?
+      markers[key].setPosition(position)
+      markers[key].setMap(map)
+    else
+      markers[key].setMap(null)
+
+  for key in keys
+    markers[key] = new google.maps.Marker({
+    })
+
+  state.onChange('origin', (position) -> sync('origin', position))
+  state.onChange('destination', (position) -> sync('destination', position))
+
+  sync('origin', state.origin)
+  sync('destination', state.destination)
+
 class Manager
   constructor: (@map, @origin, @destination, @city, chartLink, dataLink, worstLocationsDiv, options=undefined) ->
     @state = new State({
@@ -847,8 +890,6 @@ class Manager
       minYear: options? && options.minYear
       maxYear: options? && options.maxYear
     })
-
-    this.setCity(@city)
 
     new RouteFinder(@state)
     new RouteRenderer(@state, @map)
@@ -861,176 +902,115 @@ class Manager
       new AccidentsTableRenderer(@state, dataLink)
 
     new WorstLocationsRenderer(@state, worstLocationsDiv, @map)
-
-  setCity: (@city) ->
-    @state.setCity(city)
-    zoomData = CITIES[@city]
-    latlng = new google.maps.LatLng(zoomData.latitude, zoomData.longitude)
-    zoom = zoomData.zoom
-    @map.setCenter(latlng)
-    @map.setZoom(zoom)
-
-  getCityBounds: () ->
-    CITIES[@city].bounds
-
-  setOrigin: (@origin) ->
-    if @origin
-      if !@originMarker?
-        @originMarker = new google.maps.Marker({
-          position: @origin,
-          map: @map
-        })
-      else
-        @originMarker.setPosition(@origin)
-    else
-      if @originMarker?
-        @originMarker.setMap(null)
-        delete @originMarker
-    @state.setOrigin(@origin)
-
-  setDestination: (@destination) ->
-    if @destination
-      if !@destinationMarker?
-        @destinationMarker = new google.maps.Marker({
-          position: @destination,
-          map: @map
-        })
-      else
-        @destinationMarker.setPosition(@destination)
-    else
-      if @destinationMarker?
-        @destinationMarker.setMap(null)
-        delete @destinationMarker
-    @state.setDestination(@destination)
+    keepMapInStateBounds(@map, @state)
+    syncOriginDestinationMarkers(@state, @map)
 
 window.Manager = Manager
 
-class AddressSearchForm
-  constructor: (form, @originOrDestination, @manager) ->
-    $form = $(form)
-    @$a = $form.find('a')
-    @aText = @$a.text()
-    @$input = $form.find('input[type=text]')
-    @$status = $form.find('div.status')
-    @$error = $form.find('div.error')
-    @lastAddressTyped = @$input.val()
-    @mapListener = undefined
+_address_form_abort_clicking_on_map = undefined # only one clicking at a time
 
-    $form.on 'submit', (e) =>
-      e.stopPropagation()
-      e.preventDefault()
-      this.onAddressTyped()
+$.fn.address_form = (originOrDestination, state, map) ->
+  property = originOrDestination
+  setter = originOrDestination == 'origin' && 'setOrigin' || 'setDestination'
+  aPointString = originOrDestination == 'origin' && 'a start point' || 'an end point'
+  $form = $(this)
+  $a = $form.find('a')
+  aText = $a.text()
+  $input = $form.find('input[type=text]')
+  $error = $form.find('.error')
+  $status = $form.find('.status')
+  lastAddressTyped = $input.val()
+  geocoder = new google.maps.Geocoder()
 
-    @$a.on 'click', (e) =>
-      $a = $(e.target)
-      e.stopPropagation()
-      e.preventDefault()
-      if @mapListener?
-        google.maps.event.removeListener(@mapListener)
-        @mapListener = undefined
-        this.setClickingOnMap(false)
-      else
-        @mapListener = google.maps.event.addListenerOnce(@manager.map, 'click', (e) =>
-          @mapListener = undefined
-          this.setClickingOnMap(false)
-          this.onAddressClicked(e.latLng)
-        )
-        this.setClickingOnMap(true)
+  getCityBounds = () ->
+    CITIES[state.city].bounds
 
-  setClickingOnMap: (clickingOnMap) ->
-    if clickingOnMap
-      @$a.text('Click a point on the map to choose it')
-      @$a.addClass('clicking')
-    else
-      @$a.text(@aText)
-      @$a.removeClass('clicking')
+  get = () ->
+    state[property]
 
-  getGeocoder: () ->
-    @geocoder ||= new google.maps.Geocoder()
+  set = (value) ->
+    state[setter](value)
 
-  onAddressTyped: () ->
-    addressTyped = @$input.val()
-    return if addressTyped == @lastAddressTyped
+  setStatus = (status) ->
+    $status.text(status || '')
+    status? && $status.show() || $status.hide()
 
-    this.setError(undefined)
+  setError = (error) ->
+    $error.text(error || '')
+    error? && $error.show() || $error.hide()
+
+  maybeLookupAddress = () ->
+    addressTyped = $input.val()
+    return if addressTyped == lastAddressTyped
+
+    setError(undefined)
 
     if $.trim(addressTyped || '')
-      this.setStatus('Looking up address')
-      @lastAddressTyped = addressTyped
-      this.getGeocoder().geocode({
+      setStatus('Looking up address')
+      lastAddressTyped = addressTyped
+      geocoder.geocode({
         'address': addressTyped,
-        'bounds': @manager.getCityBounds(),
-      }, (results, status) =>
-        this.onAddressGeocoded(results, status)
+        'bounds': getCityBounds()
+      }, (results, status) ->
+        handleGeocoderResult(results, status)
       )
-    else
-      this.setStatus(undefined)
-      this.setLatLng(undefined)
 
-  setStatus: (status) ->
-    @$status.text(status || '')
-    if status?
-      @$status.show()
-    else
-      @$status.hide()
-
-  setError: (error) ->
-    @$error.text(error || '')
-    if error?
-      @$error.show()
-    else
-      @$error.hide()
-
-  onAddressClicked: (latlng) ->
-    this.setLatLng(latlng)
-    this.setError(undefined)
-
-    if latlng?
-      this.setStatus('Finding address')
-      @$input.val('…')
-      this.getGeocoder().geocode({
-        latLng: latlng
-      }, (results, status) =>
-        this.onLatLngGeocoded(results, status)
-      )
-    else
-      @$input.val('')
-      this.setStatus(undefined)
-
-  setLatLng: (latlng) ->
-    if @originOrDestination == 'origin'
-      @manager.setOrigin(latlng)
-    else
-      @manager.setDestination(latlng)
-
-    if latlng?
-      bounds = @manager.map.getBounds()
-      if !bounds.contains(latlng)
-        bounds.extend(latlng)
-        @manager.map.fitBounds(bounds)
-
-  onAddressGeocoded: (results, status) ->
-    this.setStatus(undefined)
-    cityBounds = @manager.getCityBounds()
-    if status == google.maps.GeocoderStatus.ZERO_RESULTS or (
-        status == google.maps.GeocoderStatus.OK && !cityBounds.contains(results[0].geometry.location))
-      this.setError('Address not found')
-      this.setLatLng(null)
+  handleGeocoderResult = (results, status) ->
+    setStatus(undefined)
+    if status == google.maps.GeocoderStatus.ZERO_RESULTS || (
+      status == google.maps.GeocoderStatus.OK && !getCityBounds().contains(results[0].geometry.location))
+      setError('Not found')
+      set(null)
     else if status == google.maps.GeocoderStatus.OK
-      this.setLatLng(results[0].geometry.location)
+      set(results[0].geometry.location)
     else
-      this.setError('Failed to look up address')
-      this.setLatLng(null)
+      setError('Failed to look up address')
+      set(null)
 
-  onLatLngGeocoded: (results, status) ->
-    this.setStatus(undefined)
+  lookupLatLng = (latlng) ->
+    setError(undefined)
+
+    if latlng?
+      setStatus('Looking up address')
+      $input.val('…')
+      geocoder.geocode({
+        latLng: latlng
+      }, (results, status) ->
+        handleReverseGeocoderResult(results, status)
+      )
+    else
+      $input.val('')
+      setStatus(undefined)
+
+  handleReverseGeocoderResult = (results, status) ->
+    setStatus(undefined)
     if status == google.maps.GeocoderStatus.OK
-      @$input.val(results[0].formatted_address)
+      $input.val(results[0].formatted_address)
     else
-      @$input.val('(point on map)')
+      $input.val('(point on map)')
 
-$.fn.address_search_form = (originOrDestination, manager) ->
-  $.each(this, () -> new AddressSearchForm(this, originOrDestination, manager))
+  $form.on 'submit blur', (e) ->
+    e.preventDefault()
+    maybeLookupAddress()
+
+  $a.on 'click', (e) ->
+    e.preventDefault()
+    _address_form_abort_clicking_on_map?()
+    _address_form_abort_clicking_on_map = undefined
+
+    if $a.hasClass('clicking')
+      $a.removeClass('clicking')
+      return
+
+    mapListener = google.maps.event.addListenerOnce map, 'click', (e) ->
+      _address_form_abort_clicking_on_map()
+      set(e.latLng)
+      lookupLatLng(e.latLng)
+
+    _address_form_abort_clicking_on_map = () ->
+      google.maps.event.removeListener(mapListener)
+      $a.text("click #{aPointString} on the map")
+      $a.removeClass('clicking')
 
 $.fn.mode_form = (state) ->
   $.each this, () ->

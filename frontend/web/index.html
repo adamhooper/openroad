@@ -411,8 +411,8 @@
 
       $('form#mode').mode_form(manager.state);
 
-      $('form#origin').address_search_form('origin', manager);
-      $('form#destination').address_search_form('destination', manager);
+      $('form#origin').address_form('origin', manager.state, manager.map);
+      $('form#destination').address_form('destination', manager.state, manager.map);
 
       $('#city a').click(function(e) {
         e.preventDefault();
@@ -422,7 +422,7 @@
         $ul = $li.parent();
         $ul.find('li').removeClass('selected');
         $li.addClass('selected');
-        manager.setCity($a.attr('href').split(/\#/)[1])
+        manager.state.setCity($a.attr('href').split(/\#/)[1])
       });
 
       $('div.year div.slider').year_range_slider(manager.state);

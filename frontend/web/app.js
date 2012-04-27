@@ -1,5 +1,5 @@
 (function() {
-  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, selectText,
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, selectText, syncOriginDestinationMarkers, _address_form_abort_clicking_on_map,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   URL = 'http://localhost:8000/%{city}';
@@ -1110,6 +1110,69 @@
 
   })();
 
+  keepMapInStateBounds = function(map, state) {
+    var extendMapBoundsToFitPosition, fitMapToCityBounds, key, _i, _len, _ref, _results;
+    fitMapToCityBounds = function(city) {
+      var cityData, latLng;
+      cityData = CITIES[city];
+      latLng = new google.maps.LatLng(cityData.latitude, cityData.longitude);
+      map.setCenter(latLng);
+      return map.setZoom(cityData.zoom);
+    };
+    state.onChange('city', function(city) {
+      return fitMapToCityBounds(city);
+    });
+    fitMapToCityBounds(state.city);
+    extendMapBoundsToFitPosition = function(latLng) {
+      var bounds;
+      bounds = map.getBounds();
+      if (!bounds.contains(latLng)) {
+        bounds.extend(latLng);
+        return map.fitBounds(bounds);
+      }
+    };
+    _ref = ['origin', 'destination'];
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      key = _ref[_i];
+      state.onChange(key, function(position) {
+        if (position != null) return extendMapBoundsToFitPosition(position);
+      });
+      if (state[key] != null) {
+        _results.push(extendMapBoundsToFitPosition(state[key]));
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+
+  syncOriginDestinationMarkers = function(state, map) {
+    var key, keys, markers, sync, _i, _len;
+    keys = ['origin', 'destination'];
+    markers = {};
+    sync = function(key, position) {
+      if (position != null) {
+        markers[key].setPosition(position);
+        return markers[key].setMap(map);
+      } else {
+        return markers[key].setMap(null);
+      }
+    };
+    for (_i = 0, _len = keys.length; _i < _len; _i++) {
+      key = keys[_i];
+      markers[key] = new google.maps.Marker({});
+    }
+    state.onChange('origin', function(position) {
+      return sync('origin', position);
+    });
+    state.onChange('destination', function(position) {
+      return sync('destination', position);
+    });
+    sync('origin', state.origin);
+    return sync('destination', state.destination);
+  };
+
   Manager = (function() {
 
     function Manager(map, origin, destination, city, chartLink, dataLink, worstLocationsDiv, options) {
@@ -1125,7 +1188,6 @@
         minYear: (options != null) && options.minYear,
         maxYear: (options != null) && options.maxYear
       });
-      this.setCity(this.city);
       new RouteFinder(this.state);
       new RouteRenderer(this.state, this.map);
       new AccidentFinder(this.state);
@@ -1133,62 +1195,9 @@
       if (chartLink != null) new TrendChartRenderer(this.state, chartLink);
       if (dataLink != null) new AccidentsTableRenderer(this.state, dataLink);
       new WorstLocationsRenderer(this.state, worstLocationsDiv, this.map);
+      keepMapInStateBounds(this.map, this.state);
+      syncOriginDestinationMarkers(this.state, this.map);
     }
-
-    Manager.prototype.setCity = function(city) {
-      var latlng, zoom, zoomData;
-      this.city = city;
-      this.state.setCity(city);
-      zoomData = CITIES[this.city];
-      latlng = new google.maps.LatLng(zoomData.latitude, zoomData.longitude);
-      zoom = zoomData.zoom;
-      this.map.setCenter(latlng);
-      return this.map.setZoom(zoom);
-    };
-
-    Manager.prototype.getCityBounds = function() {
-      return CITIES[this.city].bounds;
-    };
-
-    Manager.prototype.setOrigin = function(origin) {
-      this.origin = origin;
-      if (this.origin) {
-        if (!(this.originMarker != null)) {
-          this.originMarker = new google.maps.Marker({
-            position: this.origin,
-            map: this.map
-          });
-        } else {
-          this.originMarker.setPosition(this.origin);
-        }
-      } else {
-        if (this.originMarker != null) {
-          this.originMarker.setMap(null);
-          delete this.originMarker;
-        }
-      }
-      return this.state.setOrigin(this.origin);
-    };
-
-    Manager.prototype.setDestination = function(destination) {
-      this.destination = destination;
-      if (this.destination) {
-        if (!(this.destinationMarker != null)) {
-          this.destinationMarker = new google.maps.Marker({
-            position: this.destination,
-            map: this.map
-          });
-        } else {
-          this.destinationMarker.setPosition(this.destination);
-        }
-      } else {
-        if (this.destinationMarker != null) {
-          this.destinationMarker.setMap(null);
-          delete this.destinationMarker;
-        }
-      }
-      return this.state.setDestination(this.destination);
-    };
 
     return Manager;
 
@@ -1196,164 +1205,114 @@
 
   window.Manager = Manager;
 
-  AddressSearchForm = (function() {
+  _address_form_abort_clicking_on_map = void 0;
 
-    function AddressSearchForm(form, originOrDestination, manager) {
-      var $form,
-        _this = this;
-      this.originOrDestination = originOrDestination;
-      this.manager = manager;
-      $form = $(form);
-      this.$a = $form.find('a');
-      this.aText = this.$a.text();
-      this.$input = $form.find('input[type=text]');
-      this.$status = $form.find('div.status');
-      this.$error = $form.find('div.error');
-      this.lastAddressTyped = this.$input.val();
-      this.mapListener = void 0;
-      $form.on('submit', function(e) {
-        e.stopPropagation();
-        e.preventDefault();
-        return _this.onAddressTyped();
-      });
-      this.$a.on('click', function(e) {
-        var $a;
-        $a = $(e.target);
-        e.stopPropagation();
-        e.preventDefault();
-        if (_this.mapListener != null) {
-          google.maps.event.removeListener(_this.mapListener);
-          _this.mapListener = void 0;
-          return _this.setClickingOnMap(false);
-        } else {
-          _this.mapListener = google.maps.event.addListenerOnce(_this.manager.map, 'click', function(e) {
-            _this.mapListener = void 0;
-            _this.setClickingOnMap(false);
-            return _this.onAddressClicked(e.latLng);
-          });
-          return _this.setClickingOnMap(true);
-        }
-      });
-    }
-
-    AddressSearchForm.prototype.setClickingOnMap = function(clickingOnMap) {
-      if (clickingOnMap) {
-        this.$a.text('Click a point on the map to choose it');
-        return this.$a.addClass('clicking');
-      } else {
-        this.$a.text(this.aText);
-        return this.$a.removeClass('clicking');
-      }
+  $.fn.address_form = function(originOrDestination, state, map) {
+    var $a, $error, $form, $input, $status, aPointString, aText, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, maybeLookupAddress, property, set, setError, setStatus, setter;
+    property = originOrDestination;
+    setter = originOrDestination === 'origin' && 'setOrigin' || 'setDestination';
+    aPointString = originOrDestination === 'origin' && 'a start point' || 'an end point';
+    $form = $(this);
+    $a = $form.find('a');
+    aText = $a.text();
+    $input = $form.find('input[type=text]');
+    $error = $form.find('.error');
+    $status = $form.find('.status');
+    lastAddressTyped = $input.val();
+    geocoder = new google.maps.Geocoder();
+    getCityBounds = function() {
+      return CITIES[state.city].bounds;
     };
-
-    AddressSearchForm.prototype.getGeocoder = function() {
-      return this.geocoder || (this.geocoder = new google.maps.Geocoder());
+    get = function() {
+      return state[property];
     };
-
-    AddressSearchForm.prototype.onAddressTyped = function() {
-      var addressTyped,
-        _this = this;
-      addressTyped = this.$input.val();
-      if (addressTyped === this.lastAddressTyped) return;
-      this.setError(void 0);
+    set = function(value) {
+      return state[setter](value);
+    };
+    setStatus = function(status) {
+      $status.text(status || '');
+      return (status != null) && $status.show() || $status.hide();
+    };
+    setError = function(error) {
+      $error.text(error || '');
+      return (error != null) && $error.show() || $error.hide();
+    };
+    maybeLookupAddress = function() {
+      var addressTyped;
+      addressTyped = $input.val();
+      if (addressTyped === lastAddressTyped) return;
+      setError(void 0);
       if ($.trim(addressTyped || '')) {
-        this.setStatus('Looking up address');
-        this.lastAddressTyped = addressTyped;
-        return this.getGeocoder().geocode({
+        setStatus('Looking up address');
+        lastAddressTyped = addressTyped;
+        return geocoder.geocode({
           'address': addressTyped,
-          'bounds': this.manager.getCityBounds()
+          'bounds': getCityBounds()
         }, function(results, status) {
-          return _this.onAddressGeocoded(results, status);
+          return handleGeocoderResult(results, status);
         });
-      } else {
-        this.setStatus(void 0);
-        return this.setLatLng(void 0);
       }
     };
-
-    AddressSearchForm.prototype.setStatus = function(status) {
-      this.$status.text(status || '');
-      if (status != null) {
-        return this.$status.show();
+    handleGeocoderResult = function(results, status) {
+      setStatus(void 0);
+      if (status === google.maps.GeocoderStatus.ZERO_RESULTS || (status === google.maps.GeocoderStatus.OK && !getCityBounds().contains(results[0].geometry.location))) {
+        setError('Not found');
+        return set(null);
+      } else if (status === google.maps.GeocoderStatus.OK) {
+        return set(results[0].geometry.location);
       } else {
-        return this.$status.hide();
+        setError('Failed to look up address');
+        return set(null);
       }
     };
-
-    AddressSearchForm.prototype.setError = function(error) {
-      this.$error.text(error || '');
-      if (error != null) {
-        return this.$error.show();
-      } else {
-        return this.$error.hide();
-      }
-    };
-
-    AddressSearchForm.prototype.onAddressClicked = function(latlng) {
-      var _this = this;
-      this.setLatLng(latlng);
-      this.setError(void 0);
+    lookupLatLng = function(latlng) {
+      setError(void 0);
       if (latlng != null) {
-        this.setStatus('Finding address');
-        this.$input.val('…');
-        return this.getGeocoder().geocode({
+        setStatus('Looking up address');
+        $input.val('…');
+        return geocoder.geocode({
           latLng: latlng
         }, function(results, status) {
-          return _this.onLatLngGeocoded(results, status);
+          return handleReverseGeocoderResult(results, status);
         });
       } else {
-        this.$input.val('');
-        return this.setStatus(void 0);
+        $input.val('');
+        return setStatus(void 0);
       }
     };
-
-    AddressSearchForm.prototype.setLatLng = function(latlng) {
-      var bounds;
-      if (this.originOrDestination === 'origin') {
-        this.manager.setOrigin(latlng);
-      } else {
-        this.manager.setDestination(latlng);
-      }
-      if (latlng != null) {
-        bounds = this.manager.map.getBounds();
-        if (!bounds.contains(latlng)) {
-          bounds.extend(latlng);
-          return this.manager.map.fitBounds(bounds);
-        }
-      }
-    };
-
-    AddressSearchForm.prototype.onAddressGeocoded = function(results, status) {
-      var cityBounds;
-      this.setStatus(void 0);
-      cityBounds = this.manager.getCityBounds();
-      if (status === google.maps.GeocoderStatus.ZERO_RESULTS || (status === google.maps.GeocoderStatus.OK && !cityBounds.contains(results[0].geometry.location))) {
-        this.setError('Address not found');
-        return this.setLatLng(null);
-      } else if (status === google.maps.GeocoderStatus.OK) {
-        return this.setLatLng(results[0].geometry.location);
-      } else {
-        this.setError('Failed to look up address');
-        return this.setLatLng(null);
-      }
-    };
-
-    AddressSearchForm.prototype.onLatLngGeocoded = function(results, status) {
-      this.setStatus(void 0);
+    handleReverseGeocoderResult = function(results, status) {
+      setStatus(void 0);
       if (status === google.maps.GeocoderStatus.OK) {
-        return this.$input.val(results[0].formatted_address);
+        return $input.val(results[0].formatted_address);
       } else {
-        return this.$input.val('(point on map)');
+        return $input.val('(point on map)');
       }
     };
-
-    return AddressSearchForm;
-
-  })();
-
-  $.fn.address_search_form = function(originOrDestination, manager) {
-    return $.each(this, function() {
-      return new AddressSearchForm(this, originOrDestination, manager);
+    $form.on('submit blur', function(e) {
+      e.preventDefault();
+      return maybeLookupAddress();
+    });
+    return $a.on('click', function(e) {
+      var mapListener;
+      e.preventDefault();
+      if (typeof _address_form_abort_clicking_on_map === "function") {
+        _address_form_abort_clicking_on_map();
+      }
+      _address_form_abort_clicking_on_map = void 0;
+      if ($a.hasClass('clicking')) {
+        $a.removeClass('clicking');
+        return;
+      }
+      mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
+        _address_form_abort_clicking_on_map();
+        set(e.latLng);
+        return lookupLatLng(e.latLng);
+      });
+      return _address_form_abort_clicking_on_map = function() {
+        google.maps.event.removeListener(mapListener);
+        $a.text("click " + aPointString + " on the map");
+        return $a.removeClass('clicking');
+      };
     });
   };
 
