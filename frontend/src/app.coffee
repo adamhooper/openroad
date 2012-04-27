@@ -795,7 +795,12 @@ class WorstLocationsRenderer
   _topSpotsToMarkers: (topSpots) ->
     markers = []
 
+    return [] unless topSpots.length
+
+    max = topSpots[0].accidents.length
+
     for topSpot in topSpots
+      break if topSpot.accidents.length != max
       marker = new google.maps.Marker({
         clickable: false,
         flat: true,

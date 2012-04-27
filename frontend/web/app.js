@@ -1064,10 +1064,13 @@
     };
 
     WorstLocationsRenderer.prototype._topSpotsToMarkers = function(topSpots) {
-      var marker, markers, topSpot, _i, _len;
+      var marker, markers, max, topSpot, _i, _len;
       markers = [];
+      if (!topSpots.length) return [];
+      max = topSpots[0].accidents.length;
       for (_i = 0, _len = topSpots.length; _i < _len; _i++) {
         topSpot = topSpots[_i];
+        if (topSpot.accidents.length !== max) break;
         marker = new google.maps.Marker({
           clickable: false,
           flat: true,
