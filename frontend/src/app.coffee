@@ -190,6 +190,7 @@ class State
     else
       this.accidents = {}
       this._changed('accidents')
+window.State = State
 
 class RouteFinder
   constructor: (@state) ->
@@ -882,28 +883,20 @@ syncOriginDestinationMarkers = (state, map) ->
   sync('destination', state.destination)
 
 class Manager
-  constructor: (@map, @origin, @destination, @city, chartLink, dataLink, worstLocationsDiv, options=undefined) ->
-    @state = new State({
-      city: @city,
-      origin: @origin,
-      destination: @destination,
-      minYear: options? && options.minYear
-      maxYear: options? && options.maxYear
-    })
-
-    new RouteFinder(@state)
-    new RouteRenderer(@state, @map)
-    new AccidentFinder(@state)
-    new AccidentsMarkerRenderer(@state, @map)
+  constructor: (map, state, chartLink, dataLink, worstLocationsDiv) ->
+    new RouteFinder(state)
+    new RouteRenderer(state, map)
+    new AccidentFinder(state)
+    new AccidentsMarkerRenderer(state, map)
 
     if chartLink?
-      new TrendChartRenderer(@state, chartLink)
+      new TrendChartRenderer(state, chartLink)
     if dataLink?
-      new AccidentsTableRenderer(@state, dataLink)
+      new AccidentsTableRenderer(state, dataLink)
 
-    new WorstLocationsRenderer(@state, worstLocationsDiv, @map)
-    keepMapInStateBounds(@map, @state)
-    syncOriginDestinationMarkers(@state, @map)
+    new WorstLocationsRenderer(state, worstLocationsDiv, map)
+    keepMapInStateBounds(map, state)
+    syncOriginDestinationMarkers(state, map)
 
 window.Manager = Manager
 
@@ -1009,8 +1002,11 @@ $.fn.address_form = (originOrDestination, state, map) ->
 
     _address_form_abort_clicking_on_map = () ->
       google.maps.event.removeListener(mapListener)
-      $a.text("click #{aPointString} on the map")
+      $a.text(aText)
       $a.removeClass('clicking')
+
+    $a.text("click #{aPointString} on the map")
+    $a.addClass('clicking')
 
 $.fn.mode_form = (state) ->
   $.each this, () ->

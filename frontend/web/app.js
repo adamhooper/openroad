@@ -216,6 +216,8 @@
 
   })();
 
+  window.State = State;
+
   RouteFinder = (function() {
 
     function RouteFinder(state) {
@@ -1175,28 +1177,16 @@
 
   Manager = (function() {
 
-    function Manager(map, origin, destination, city, chartLink, dataLink, worstLocationsDiv, options) {
-      this.map = map;
-      this.origin = origin;
-      this.destination = destination;
-      this.city = city;
-      if (options == null) options = void 0;
-      this.state = new State({
-        city: this.city,
-        origin: this.origin,
-        destination: this.destination,
-        minYear: (options != null) && options.minYear,
-        maxYear: (options != null) && options.maxYear
-      });
-      new RouteFinder(this.state);
-      new RouteRenderer(this.state, this.map);
-      new AccidentFinder(this.state);
-      new AccidentsMarkerRenderer(this.state, this.map);
-      if (chartLink != null) new TrendChartRenderer(this.state, chartLink);
-      if (dataLink != null) new AccidentsTableRenderer(this.state, dataLink);
-      new WorstLocationsRenderer(this.state, worstLocationsDiv, this.map);
-      keepMapInStateBounds(this.map, this.state);
-      syncOriginDestinationMarkers(this.state, this.map);
+    function Manager(map, state, chartLink, dataLink, worstLocationsDiv) {
+      new RouteFinder(state);
+      new RouteRenderer(state, map);
+      new AccidentFinder(state);
+      new AccidentsMarkerRenderer(state, map);
+      if (chartLink != null) new TrendChartRenderer(state, chartLink);
+      if (dataLink != null) new AccidentsTableRenderer(state, dataLink);
+      new WorstLocationsRenderer(state, worstLocationsDiv, map);
+      keepMapInStateBounds(map, state);
+      syncOriginDestinationMarkers(state, map);
     }
 
     return Manager;
@@ -1308,11 +1298,13 @@
         set(e.latLng);
         return lookupLatLng(e.latLng);
       });
-      return _address_form_abort_clicking_on_map = function() {
+      _address_form_abort_clicking_on_map = function() {
         google.maps.event.removeListener(mapListener);
-        $a.text("click " + aPointString + " on the map");
+        $a.text(aText);
         return $a.removeClass('clicking');
       };
+      $a.text("click " + aPointString + " on the map");
+      return $a.addClass('clicking');
     });
   };
 

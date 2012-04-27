@@ -404,15 +404,18 @@
       var bikeLayer = new google.maps.BicyclingLayer();
       bikeLayer.setMap(map);
 
+      var state = new State('toronto');
+
       var chartLink = $('#details .chart a')[0];
       var dataLink = $('#details .data a')[0];
       var worstLocationsDiv = document.getElementById('worst-locations');
-      var manager = new Manager(map, undefined, undefined, 'toronto', chartLink, dataLink, worstLocationsDiv);
 
-      $('form#mode').mode_form(manager.state);
+      var manager = new Manager(map, state, chartLink, dataLink, worstLocationsDiv);
 
-      $('form#origin').address_form('origin', manager.state, manager.map);
-      $('form#destination').address_form('destination', manager.state, manager.map);
+      $('form#mode').mode_form(state);
+      $('form#origin').address_form('origin', state, map);
+      $('form#destination').address_form('destination', state, map);
+      $('div.year div.slider').year_range_slider(state);
 
       $('#city a').click(function(e) {
         e.preventDefault();
@@ -424,8 +427,6 @@
         $li.addClass('selected');
         manager.state.setCity($a.attr('href').split(/\#/)[1])
       });
-
-      $('div.year div.slider').year_range_slider(manager.state);
     </script>
   </body>
 </html>
