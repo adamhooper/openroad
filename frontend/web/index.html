@@ -11,60 +11,6 @@
         width: 950px;
       }
 
-      h1 {
-        margin: 0;
-        padding: 0;
-        text-align: center;
-        font-size: 2.75em;
-        font-family: 'PT Sans Narrow', sans-serif;
-        font-weight: bold;
-        text-transform: uppercase;
-        color: #a1cde5;
-        line-height: 1;
-        height: 1em;
-        position: relative;
-      }
-
-      h1 span.bg1, h1 span.bg2 {
-        display: block;
-        position: absolute;
-        top: 50%;
-        bottom: 0;
-        margin-top: -5px;
-        width: 50%;
-      }
-
-      h1 span.bg1 {
-        left: 0;
-        border-top: 10px solid #f9f298;
-      }
-
-      h1 span.bg2 {
-        right: 0;
-        border-top: 10px dashed #f9f298;
-      }
-
-      h1 span.text {
-        display: block;
-        position: relative;
-      }
-
-      h1 span.open {
-        padding: 0 20px 0 10px;
-        background: white;
-      }
-
-      h1 span.road {
-        padding: 0 10px 0 20px;
-        background: white;
-      }
-
-      p.blurb {
-        font-family: 'PT Sans Narrow', sans-serif;
-        color: #4d4d4d;
-        font-size: .9em;
-      }
-
       div.forms {
         position: relative;
       }
@@ -166,10 +112,11 @@
       }
 
       div#details {
+        margin-top: .5em;
         position: relative;
         font-family: 'PT Sans Narrow', sans-serif;
         color: #223b5d;
-        padding-top: 5em; /* for absolute-positioned boxes */
+        padding-top: 5.5em;
       }
 
       div#details h2 {
@@ -178,38 +125,63 @@
         margin: 0;
         padding: 0;
         line-height: 2;
+        white-space: nowrap;
+        text-align: center;
+        line-height: 1;
       }
 
       div#details h2 a {
         color: #223b5d;
         text-decoration: none;
+        display: block;
+        padding-bottom: 80px;
       }
 
-      div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities {
+      div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities, div#details div.reset {
         position: absolute;
         top: 0;
-        height: 5em;
       }
 
       div#details div.year {
         left: 0;
-        right: 60%;
+        width: 32%;
+      }
+
+      div#details div.chart {
+        left: 32%;
+        width: 17%;
+      }
+
+      div#details div.data {
+        left: 49%;
+        width: 17%;
+      }
+
+      div#details div.other-cities {
+        border-left: 2px solid #f9f298;
+        left: 66%;
+        width: 17%;
+      }
+
+      div#details div.reset {
+        left: 83%;
+        width: 17%;
       }
 
       div#details div.year .slider {
-        margin-top: 1em;
+        margin-top: 1.5em;
       }
 
       div#details div.year .value {
         text-align: center;
-        margin-top: 2em;
+        margin-top: 2.5em;
       }
 
       .ui-corner-all {
-        -moz-border-radius: .5em;
-        -webkit-border-radius: .5em;
-        -khtml-border-radius: .5em;
-        border-radius: .5em;
+        -moz-border-radius: .3em;
+        -webkit-border-radius: .3em;
+        -khtml-border-radius: .3em;
+        border-radius: .3em;
       }
 
       .ui-slider-horizontal {
@@ -258,26 +230,31 @@
         cursor: e-resize;
       }
 
-      div#details div.chart {
-        text-align: center;
-        left: 40%;
-        right: 40%;
+      div#details div.chart a {
+        background: url(icons/accidents-by-year-small.png) no-repeat center bottom;
       }
 
-      div#details div.data {
-        text-align: center;
-        left: 60%;
-        right: 20%;
+      div#details div.data a {
+        background: url(icons/accident-data-small.png) no-repeat center bottom;
       }
 
-      div#details div.other-cities {
-        text-align: center;
-        left: 80%;
-        right: 0;
+      div#details div.other-cities a {
+        background: url(icons/choose-another-city-small.png) no-repeat center bottom;
+      }
+
+      div#details div.reset a {
+        background: url(icons/reset-small.png) no-repeat center bottom;
       }
 
       div#worst-locations {
-        border-top: 2px solid #223b5d;
+        border-top: 2px solid #f9f298;
+        display: none;
+      }
+
+      div#worst-locations h2 {
+        padding-top: .25em;
+        text-align: left;
+        line-height: 1.6;
       }
 
       div#worst-locations ul {
@@ -287,10 +264,16 @@
       }
 
       div#worst-locations li {
+        float: left;
+        width: 316px;
         margin: 0;
         padding: 0;
-        width: 30%;
-        display: inline-block;
+        font-size: .8em;
+        color: black;
+      }
+
+      div#worst-locations li.top-spot-0, div#worst-locations li.top-spot-1 {
+        padding-right: 1px;
       }
 
       div#worst-locations .image-container {
@@ -351,10 +334,6 @@
     </style>
   </head>
   <body>
-    <h1><span class="bg1"></span><span class="bg2"></span><span class="bg3"></span><span class="text"><span class="open">Open</span><span class="road">Road</span></span></h1>
-
-    <p class="blurb">We've asked the authorities to list every accident they've recorded. Choose a route and we'll show you where car and bicycle collide.</p>
-
     <div class="forms">
       <div class="origin-destination">
         <h2>Set your route</h2>
@@ -401,6 +380,9 @@
       <div class="other-cities">
         <h2><a href="#">Explore another city</a></h2>
       </div>
+      <div class="reset">
+        <h2><a href="#">Reset map</a></h2>
+      </div>
 
       <div id="worst-locations"></div>
     </div>
@@ -425,7 +407,8 @@
       var map = new google.maps.Map(mapDiv, {
         mapTypeId: google.maps.MapTypeId.ROADMAP,
         center: new google.maps.LatLng(0, 0),
-        zoom: 1
+        zoom: 1,
+        mapTypeControl: false
       });
 
       var bikeLayer = new google.maps.BicyclingLayer();
