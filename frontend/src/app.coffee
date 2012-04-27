@@ -509,42 +509,18 @@ class AccidentsMarkerRenderer
     clusterUrlRoot = "#{window.location.protocol}//#{window.location.host}#{window.location.pathname.replace(/[^\/]*$/, '')}/icons"
 
     calculateMarkerStyleIndex = (markers, nIconStyles) ->
-      accidentsPath = undefined
-      for marker in markers
-        if !accidentsPath?
-          accidentsPath = marker.accidentPath
-        if accidentsPath != marker.accidentPath
-          accidentsPath = 'both'
-          break
-
-      # index starts at 1. Ick.
-      index = {
-        bicycling: 1,
-        driving: 2,
-        both: 3,
-      }[accidentsPath]
-
       text = "#{markers.length}"
       text = ' ' if markers.length == 1
-
-      {
-        text: text,
-        index: index
-      }
-
-    makeIconStyle = (mode, size) ->
-      {
-        width: size,
-        height: size,
-        textSize: size - 8,
-        textColor: (mode == 'both' && '#000000' || '#ffffff'),
-        url: "#{clusterUrlRoot}/marker-accident-#{mode}.png",
-      }
+      { text: text, index: 1 }
 
     iconStyles = [
-      makeIconStyle('bicycling', 19),
-      makeIconStyle('driving', 19),
-      makeIconStyle('both', 19),
+      {
+        width: 18,
+        height: 18,
+        textSize: 10,
+        textColor: '#000000',
+        url: "#{clusterUrlRoot}/marker-accident.png",
+      }
     ]
 
     new MarkerClusterer(@map, [], {

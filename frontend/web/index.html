@@ -11,6 +11,11 @@
         width: 950px;
         margin: 0 auto;
         padding: 0;
+        font-size: 20px; /* makes math easy */
+      }
+
+      * {
+        font-family: 'PT Sans Narrow', sans-serif;
       }
 
       div.forms {
@@ -18,7 +23,6 @@
       }
 
       div.origin-destination, form#mode {
-        font-family: 'PT Sans Narrow', sans-serif;
         color: #223b5d;
         margin-bottom: .25em;
       }
@@ -36,7 +40,6 @@
       }
 
       form.origin-destination label {
-        font-family: 'PT Sans Narrow', sans-serif;
         color: #a1cde5;
         float: left;
         width: 3em;
@@ -55,7 +58,6 @@
       }
 
       form.origin-destination input.text {
-        font-family: 'PT Sans Narrow', sans-serif;
         border: 2px solid #223b5d;
         background: #f9f298;
         padding-left: 5px;
@@ -113,10 +115,35 @@
         height: 400px;
       }
 
+      ul#legend {
+        display: block;
+        margin: 0;
+        padding: 2px 0 8px;
+        text-align: center;
+        height: 33px;
+        line-height: 33px;
+        border-bottom: 2px solid #f9f298;
+        color: #4d4d4d;
+        list-style: none;
+      }
+
+      ul#legend li {
+        display: inline-block;
+        font-size: .8em;
+        height: 33px;
+        vertical-align: middle;
+        margin: 0 .5em;
+      }
+
+      ul#legend img, ul#legend span {
+        display: inline-block;
+        vertical-align: middle;
+        padding-right: .2em;
+      }
+
       div#details {
         margin-top: .5em;
         position: relative;
-        font-family: 'PT Sans Narrow', sans-serif;
         color: #223b5d;
         padding-top: 5.5em;
       }
@@ -317,7 +344,6 @@
         line-height: 90px;
         font-size: 70px;
         text-align: center;
-        font-family: 'PT Sans Narrow', sans-serif;
         font-weight: bold;
         text-transform: uppercase;
         text-decoration: none;
@@ -361,7 +387,6 @@
         white-space: nowrap;
         padding: 2px 4px;
         font-size: .75em;
-        font-family: 'PT Sans Narrow', sans-serif;
       }
 
       div#data-dialog td.id, div#data-dialog td.distance_along_path {
@@ -380,7 +405,6 @@
         <form id="origin" class="origin-destination">
           <label for="origin-text">Start</label>
           <input class="text" id="origin-text" type="text" placeholder="example: 99 1st Ave" />
-          <input type="submit" value="Set" />
           <div class="status" style="display: none;"></div>
           <div class="error" style="display: none;"></div>
           <a href="#">or choose from map</a>
@@ -388,7 +412,6 @@
         <form id="destination" class="origin-destination">
           <label for="destination-text">Finish</label>
           <input class="text" id="destination-text" type="text" placeholder="example: 12 2nd St" />
-          <input type="submit" value="Set" />
           <div class="status" style="display: none;"></div>
           <div class="error" style="display: none;"></div>
           <a href="#">or choose from map</a>
@@ -404,7 +427,13 @@
       </form>
     </div>
     <div id="map"></div>
-    <div id="summary"></div>
+    <ul id="legend" style="display:none;">
+      <li><img src="icons/marker-origin.png" alt="" /><img src="icons/marker-destination.png" alt="" /> Route marker</li>
+      <li><span style="display:inline-block;width:2em;height:.3em;background:#a73438;">&nbsp;</span> Bike route</li>
+      <li><span style="display:inline-block;width:2em;height:.3em;background:#0e3b5d;">&nbsp;</span> Car route</li>
+      <li><img src="icons/marker-accident.png" alt="" /> Accident between a car and a bicycle</li>
+      <li><img src="icons/marker-top-spot.png" alt="" /> Most accident-prone spot location</li>
+    </ul>
     <div id="details" style="display:none;">
       <div class="year">
         <h2>Date range</h2>
@@ -478,11 +507,14 @@
 
       state.onChange('accidents', function(accidents) {
         var $citySelector = $('ul#city');
+        var $legend = $('ul#legend');
         var $details = $('div#details');
         if (accidents.bicycling === undefined && accidents.driving === undefined) {
+          $legend.hide();
           $details.hide();
           $citySelector.show();
         } else {
+          $legend.show();
           $details.show();
           $citySelector.hide();
         }

@@ -716,42 +716,27 @@
     }
 
     AccidentsMarkerRenderer.prototype._createClusterer = function() {
-      var calculateMarkerStyleIndex, clusterUrlRoot, iconStyles, makeIconStyle;
+      var calculateMarkerStyleIndex, clusterUrlRoot, iconStyles;
       iconStyles = [];
       clusterUrlRoot = "" + window.location.protocol + "//" + window.location.host + (window.location.pathname.replace(/[^\/]*$/, '')) + "/icons";
       calculateMarkerStyleIndex = function(markers, nIconStyles) {
-        var accidentsPath, index, marker, text, _i, _len;
-        accidentsPath = void 0;
-        for (_i = 0, _len = markers.length; _i < _len; _i++) {
-          marker = markers[_i];
-          if (!(accidentsPath != null)) accidentsPath = marker.accidentPath;
-          if (accidentsPath !== marker.accidentPath) {
-            accidentsPath = 'both';
-            break;
-          }
-        }
-        index = {
-          bicycling: 1,
-          driving: 2,
-          both: 3
-        }[accidentsPath];
+        var text;
         text = "" + markers.length;
         if (markers.length === 1) text = ' ';
         return {
           text: text,
-          index: index
+          index: 1
         };
       };
-      makeIconStyle = function(mode, size) {
-        return {
-          width: size,
-          height: size,
-          textSize: size - 8,
-          textColor: mode === 'both' && '#000000' || '#ffffff',
-          url: "" + clusterUrlRoot + "/marker-accident-" + mode + ".png"
-        };
-      };
-      iconStyles = [makeIconStyle('bicycling', 19), makeIconStyle('driving', 19), makeIconStyle('both', 19)];
+      iconStyles = [
+        {
+          width: 18,
+          height: 18,
+          textSize: 10,
+          textColor: '#000000',
+          url: "" + clusterUrlRoot + "/marker-accident.png"
+        }
+      ];
       return new MarkerClusterer(this.map, [], {
         averageCenter: true,
         gridSize: 13,
