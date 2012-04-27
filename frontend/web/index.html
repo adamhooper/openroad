@@ -408,7 +408,7 @@
       <li><a href="#vancouver">Vancouver</a></li>
       <li><a href="#calgary">Calgary</a></li>
       <li class="selected"><a href="#toronto">Toronto</a></li>
-      <!--<li><a href="#ottawa">Ottawa</a></li>-->
+      <li><a href="#ottawa">Ottawa</a></li>
       <li><a href="#montreal">Montreal</a></li>
       <li><a href="#halifax">Halifax</a></li>
     </ul>
@@ -443,6 +443,8 @@
       $('form#destination').address_form('destination', state, map);
       $('div.year div.slider').year_range_slider(state);
       $('form#origin a').click();
+
+      $('div#details div.other-cities a').other_cities_a(state, $('ul#city'));
 
       $('#city a').click(function(e) {
         e.preventDefault();

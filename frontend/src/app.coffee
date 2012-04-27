@@ -1100,3 +1100,25 @@ $.fn.year_range_slider = (state) ->
 
   init()
   updateText()
+
+$.fn.other_cities_a = (state, $ul) ->
+  $(this).on 'click', (e) ->
+    e.preventDefault()
+    $div = $('<div id="other-cities-dialog"></div>')
+    $div.append($ul.clone())
+    $div.dialog({
+      buttons: [ { text: 'Close', click: () -> $(this).dialog('close') } ],
+      draggable: false,
+      modal: true,
+      resizable: false,
+      position: 'center',
+      title: 'Explore another city',
+      width: 'auto',
+    })
+    $div.find('ul').on 'click', (e) ->
+      $a = $(e.target)
+      return if !$a.is('a')
+
+      e.preventDefault()
+      state.setCity($a.attr('href').split(/\#/)[1])
+      $div.dialog('close')
