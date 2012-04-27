@@ -215,7 +215,7 @@
 
     State.prototype.setAccidents = function(key, accidents) {
       this.accidents[key] = accidents;
-      return this._changed('accidents', key, accidents);
+      return this._changed('accidents', this.accidents);
     };
 
     State.prototype.clearAccidents = function() {
@@ -1441,7 +1441,7 @@
       var $div;
       e.preventDefault();
       $div = $('<div id="other-cities-dialog"></div>');
-      $div.append($ul.clone());
+      $div.append($ul.clone().show());
       $div.dialog({
         buttons: [
           {

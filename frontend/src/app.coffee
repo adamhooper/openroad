@@ -199,8 +199,8 @@ class State
     this._changed('routes', @routes)
 
   setAccidents: (key, accidents) ->
-    this.accidents[key] = accidents
-    this._changed('accidents', key, accidents)
+    @accidents[key] = accidents
+    this._changed('accidents', @accidents)
 
   clearAccidents: () ->
     @accidents = {}
@@ -1105,7 +1105,7 @@ $.fn.other_cities_a = (state, $ul) ->
   $(this).on 'click', (e) ->
     e.preventDefault()
     $div = $('<div id="other-cities-dialog"></div>')
-    $div.append($ul.clone())
+    $div.append($ul.clone().show())
     $div.dialog({
       buttons: [ { text: 'Close', click: () -> $(this).dialog('close') } ],
       draggable: false,

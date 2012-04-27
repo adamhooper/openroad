@@ -479,7 +479,7 @@
       state.onChange('accidents', function(accidents) {
         var $citySelector = $('ul#city');
         var $details = $('div#details');
-        if (accidents === undefined) {
+        if (accidents.bicycling === undefined && accidents.driving === undefined) {
           $details.hide();
           $citySelector.show();
         } else {
