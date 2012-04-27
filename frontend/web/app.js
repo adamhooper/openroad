@@ -694,6 +694,7 @@
       this.state = state;
       this.map = map;
       this.markerArrays = {};
+      this.markers = [];
       this.clusterer = this._createClusterer();
       this.state.onChange('accidents', function() {
         return _this.refresh();
@@ -751,12 +752,7 @@
       });
     };
 
-    AccidentsMarkerRenderer.prototype._unpopulateMarkerArray = function(mode) {
-      this.clusterer.removeMarkers(this.markerArrays[mode]);
-      return delete this.markerArrays[mode];
-    };
-
-    AccidentsMarkerRenderer.prototype._populateMarkerArray = function(mode, accidents) {
+    AccidentsMarkerRenderer.prototype._createMarkerArray = function(mode, accidents) {
       var accident, arr, latLng, latitude, longitude, marker, _i, _len;
       arr = [];
       for (_i = 0, _len = accidents.length; _i < _len; _i++) {
@@ -771,7 +767,7 @@
         marker.accidentUniqueKey = "" + accident.id;
         arr.push(marker);
       }
-      return this.markerArrays[mode] = arr;
+      return arr;
     };
 
     AccidentsMarkerRenderer.prototype._refreshMarkerModes = function() {
@@ -809,33 +805,37 @@
     };
 
     AccidentsMarkerRenderer.prototype.refresh = function() {
-      var changed, mode, toAdd, _i, _j, _len, _len2, _ref;
-      changed = false;
-      toAdd = [];
+      var marker, markerKeys, mode, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
+      this.clusterer.removeMarkers(this.markers, true);
+      this.markers = [];
       _ref = ['bicycling', 'driving'];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         mode = _ref[_i];
         if ((this.state.accidents[mode] != null) && (this.state.mode === 'both' || this.state.mode === mode)) {
-          if (!this.markerArrays[mode]) {
-            this._populateMarkerArray(mode, this.state.accidents[mode]);
-            toAdd.push(mode);
-            changed = true;
+          if (!(this.markerArrays[mode] != null)) {
+            this.markerArrays[mode] = this._createMarkerArray(mode, this.state.accidents[mode]);
           }
         } else {
-          if (this.markerArrays[mode] != null) {
-            this._unpopulateMarkerArray(mode);
-            changed = true;
+          if (this.markerArrays[mode] != null) delete this.markerArrays[mode];
+        }
+      }
+      this._refreshMarkerModes();
+      markerKeys = {};
+      _ref2 = ['bicycling', 'driving'];
+      for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+        mode = _ref2[_j];
+        if (!(this.markerArrays[mode] != null)) continue;
+        _ref3 = this.markerArrays[mode];
+        for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
+          marker = _ref3[_k];
+          if (!(markerKeys[marker.accidentUniqueKey] != null)) {
+            markerKeys[marker.accidentUniqueKey] = true;
+            this.markers.push(marker);
           }
         }
       }
-      if (changed) {
-        this._refreshMarkerModes();
-        for (_j = 0, _len2 = toAdd.length; _j < _len2; _j++) {
-          mode = toAdd[_j];
-          this.clusterer.addMarkers(this.markerArrays[mode], true);
-        }
-        return this.clusterer.repaint();
-      }
+      this.clusterer.addMarkers(this.markers, true);
+      return this.clusterer.repaint();
     };
 
     return AccidentsMarkerRenderer;

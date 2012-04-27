@@ -481,6 +481,7 @@ class TrendChartRenderer
 class AccidentsMarkerRenderer
   constructor: (@state, @map) ->
     @markerArrays = {}
+    @markers = []
     @clusterer = this._createClusterer()
 
     @state.onChange('accidents', () => this.refresh())
@@ -540,11 +541,7 @@ class AccidentsMarkerRenderer
       zoomOnClick: false,
     })
 
-  _unpopulateMarkerArray: (mode) ->
-    @clusterer.removeMarkers(@markerArrays[mode])
-    delete @markerArrays[mode]
-
-  _populateMarkerArray: (mode, accidents) ->
+  _createMarkerArray: (mode, accidents) ->
     arr = []
     for accident in accidents
       latitude = accident.Latitude
@@ -557,7 +554,7 @@ class AccidentsMarkerRenderer
       marker.accidentUniqueKey = "#{accident.id}"
       arr.push(marker)
 
-    @markerArrays[mode] = arr
+    arr
 
   _refreshMarkerModes: () ->
     # for each marker, sets marker.accidentPath to 'bicycling', 'driving' or 'both'
@@ -576,32 +573,35 @@ class AccidentsMarkerRenderer
         marker.accidentPath = accidentKeyToMode[key]
 
   refresh: () ->
-    # Assume accidents array only changes from (set 1) -> (undefined) -> (set 2)
-    # This optimizes a common case, (set 1) -> (set 1)
-    changed = false
-    toAdd = []
+    @clusterer.removeMarkers(@markers, true)
+    @markers = []
+
     for mode in [ 'bicycling', 'driving' ]
       if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode)
         # There are accidents we want to render
-        if !@markerArrays[mode]
+        if !@markerArrays[mode]?
           # And we aren't rendering them
-          this._populateMarkerArray(mode, @state.accidents[mode])
-          toAdd.push(mode)
-          changed = true
+          @markerArrays[mode] = this._createMarkerArray(mode, @state.accidents[mode])
       else
         # There's a lack of accidents to render
         if @markerArrays[mode]?
           # But we're rendering them
-          this._unpopulateMarkerArray(mode)
-          changed = true
+          delete @markerArrays[mode]
 
-    if changed
-      this._refreshMarkerModes()
+    this._refreshMarkerModes()
 
-      for mode in toAdd
-        @clusterer.addMarkers(@markerArrays[mode], true)
+    markerKeys = {}
 
-      @clusterer.repaint()
+    for mode in [ 'bicycling', 'driving' ]
+      continue if !@markerArrays[mode]?
+      for marker in @markerArrays[mode]
+        if !markerKeys[marker.accidentUniqueKey]?
+          markerKeys[marker.accidentUniqueKey] = true
+          @markers.push(marker)
+
+    @clusterer.addMarkers(@markers, true)
+
+    @clusterer.repaint()
 
 class WorstLocationsRenderer
   constructor: (@state, @div, @map) ->
