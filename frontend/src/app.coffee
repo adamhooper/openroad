@@ -864,8 +864,10 @@ keepMapInStateBounds = (map, state) ->
 syncOriginDestinationMarkers = (state, map) ->
   keys = [ 'origin', 'destination' ]
   markers = {}
+  movedByUs = false
 
   sync = (key, position) ->
+    return if movedByUs
     if position?
       markers[key].setPosition(position)
       markers[key].setMap(map)
@@ -874,7 +876,23 @@ syncOriginDestinationMarkers = (state, map) ->
 
   for key in keys
     markers[key] = new google.maps.Marker({
+      clickable: false,
+      draggable: true,
+      flat: true,
+      icon: new google.maps.MarkerImage(
+        "icons/marker-#{key}.png",
+      )
+      title: (key == 'origin' && 'Start point' || 'End point'),
     })
+
+  google.maps.event.addListener markers.origin, 'position_changed', () ->
+    movedByUs = true
+    state.setOrigin(markers.origin.getPosition())
+    movedByUs = false
+  google.maps.event.addListener markers.destination, 'position_changed', () ->
+    movedByUs = true
+    state.setDestination(markers.destination.getPosition())
+    movedByUs = false
 
   state.onChange('origin', (position) -> sync('origin', position))
   state.onChange('destination', (position) -> sync('destination', position))
@@ -904,6 +922,7 @@ _address_form_abort_clicking_on_map = undefined # only one clicking at a time
 
 $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
   property = originOrDestination
+  setByGeocoder = false
   setter = originOrDestination == 'origin' && 'setOrigin' || 'setDestination'
   aPointString = originOrDestination == 'origin' && 'a start point' || 'an end point'
   $form = $(this)
@@ -949,6 +968,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       )
 
   handleGeocoderResult = (results, status) ->
+    setByGeocoder = true
     setStatus(undefined)
     if status == google.maps.GeocoderStatus.ZERO_RESULTS || (
       status == google.maps.GeocoderStatus.OK && !getCityBounds().contains(results[0].geometry.location))
@@ -959,6 +979,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     else
       setError('Failed to look up address')
       set(null)
+    setByGeocoder = false
 
   lookupLatLng = (latlng) ->
     setError(undefined)
@@ -1000,7 +1021,6 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     mapListener = google.maps.event.addListenerOnce map, 'click', (e) ->
       _address_form_abort_clicking_on_map()
       set(e.latLng)
-      lookupLatLng(e.latLng)
       callback() if callback
 
     _address_form_abort_clicking_on_map = () ->
@@ -1010,6 +1030,10 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
 
     $a.text("click #{aPointString} on the map")
     $a.addClass('clicking')
+
+  state.onChange originOrDestination, (position) ->
+    return if setByGeocoder
+    lookupLatLng(position)
 
 $.fn.mode_form = (state) ->
   $.each this, () ->

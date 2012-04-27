@@ -1150,10 +1150,12 @@
   };
 
   syncOriginDestinationMarkers = function(state, map) {
-    var key, keys, markers, sync, _i, _len;
+    var key, keys, markers, movedByUs, sync, _i, _len;
     keys = ['origin', 'destination'];
     markers = {};
+    movedByUs = false;
     sync = function(key, position) {
+      if (movedByUs) return;
       if (position != null) {
         markers[key].setPosition(position);
         return markers[key].setMap(map);
@@ -1163,8 +1165,24 @@
     };
     for (_i = 0, _len = keys.length; _i < _len; _i++) {
       key = keys[_i];
-      markers[key] = new google.maps.Marker({});
+      markers[key] = new google.maps.Marker({
+        clickable: false,
+        draggable: true,
+        flat: true,
+        icon: new google.maps.MarkerImage("icons/marker-" + key + ".png"),
+        title: key === 'origin' && 'Start point' || 'End point'
+      });
     }
+    google.maps.event.addListener(markers.origin, 'position_changed', function() {
+      movedByUs = true;
+      state.setOrigin(markers.origin.getPosition());
+      return movedByUs = false;
+    });
+    google.maps.event.addListener(markers.destination, 'position_changed', function() {
+      movedByUs = true;
+      state.setDestination(markers.destination.getPosition());
+      return movedByUs = false;
+    });
     state.onChange('origin', function(position) {
       return sync('origin', position);
     });
@@ -1198,9 +1216,10 @@
   _address_form_abort_clicking_on_map = void 0;
 
   $.fn.address_form = function(originOrDestination, state, map, callback) {
-    var $a, $error, $form, $input, $status, aPointString, aText, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, maybeLookupAddress, property, set, setError, setStatus, setter;
+    var $a, $error, $form, $input, $status, aPointString, aText, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, maybeLookupAddress, property, set, setByGeocoder, setError, setStatus, setter;
     if (callback == null) callback = void 0;
     property = originOrDestination;
+    setByGeocoder = false;
     setter = originOrDestination === 'origin' && 'setOrigin' || 'setDestination';
     aPointString = originOrDestination === 'origin' && 'a start point' || 'an end point';
     $form = $(this);
@@ -1245,16 +1264,18 @@
       }
     };
     handleGeocoderResult = function(results, status) {
+      setByGeocoder = true;
       setStatus(void 0);
       if (status === google.maps.GeocoderStatus.ZERO_RESULTS || (status === google.maps.GeocoderStatus.OK && !getCityBounds().contains(results[0].geometry.location))) {
         setError('Not found');
-        return set(null);
+        set(null);
       } else if (status === google.maps.GeocoderStatus.OK) {
-        return set(results[0].geometry.location);
+        set(results[0].geometry.location);
       } else {
         setError('Failed to look up address');
-        return set(null);
+        set(null);
       }
+      return setByGeocoder = false;
     };
     lookupLatLng = function(latlng) {
       setError(void 0);
@@ -1287,7 +1308,7 @@
       _address_form_abort_clicking_on_map = void 0;
       return maybeLookupAddress();
     });
-    return $a.on('click', function(e) {
+    $a.on('click', function(e) {
       var mapListener;
       e.preventDefault();
       if (typeof _address_form_abort_clicking_on_map === "function") {
@@ -1301,7 +1322,6 @@
       mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
         _address_form_abort_clicking_on_map();
         set(e.latLng);
-        lookupLatLng(e.latLng);
         if (callback) return callback();
       });
       _address_form_abort_clicking_on_map = function() {
@@ -1311,6 +1331,10 @@
       };
       $a.text("click " + aPointString + " on the map");
       return $a.addClass('clicking');
+    });
+    return state.onChange(originOrDestination, function(position) {
+      if (setByGeocoder) return;
+      return lookupLatLng(position);
     });
   };
 
