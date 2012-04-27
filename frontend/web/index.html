@@ -469,6 +469,13 @@
 
       $('div#details div.other-cities a').other_cities_a(state, $('ul#city'));
 
+      $('div#details div.reset a').on('click', function(e) {
+        e.preventDefault();
+        state.setOrigin(undefined);
+        state.setDestination(undefined);
+        $('form#origin a').click();
+      });
+
       state.onChange('accidents', function(accidents) {
         var $citySelector = $('ul#city');
         var $details = $('div#details');
