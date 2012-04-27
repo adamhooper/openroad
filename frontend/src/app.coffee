@@ -120,6 +120,9 @@ class State
     this.setDestination(undefined)
     this.setOrigin(undefined)
     @city = city
+    # clamp date range
+    this.setMinYear(@minYear)
+    this.setMaxYear(@maxYear)
     this._changed('city', @city)
 
   setMode: (mode) ->
@@ -867,19 +870,6 @@ class Manager
     @map.setCenter(latlng)
     @map.setZoom(zoom)
 
-  getCityYearRange: () ->
-    cityData = CITIES[@city]
-    [ cityData.minYear, cityData.maxYear ]
-
-  getYearRange: () ->
-    [ @state.minYear, @state.maxYear ]
-
-  setMinYear: (year) ->
-    @state.setMinYear(year)
-
-  setMaxYear: (year) ->
-    @state.setMaxYear(year)
-
   getCityBounds: () ->
     CITIES[@city].bounds
 
@@ -914,19 +904,6 @@ class Manager
     @state.setDestination(@destination)
 
 window.Manager = Manager
-
-make_expander = (div) ->
-  $h2 = $(div).children('h2')
-
-  $h2.on 'click', (e) ->
-    $inner = $(div).children('div')
-    if $inner.is(':visible')
-      $inner.hide()
-    else
-      $inner.show()
-
-$.fn.expander = () ->
-  $.each(this, () -> make_expander(this))
 
 class AddressSearchForm
   constructor: (form, @originOrDestination, @manager) ->
@@ -1066,3 +1043,56 @@ $.fn.mode_form = (state) ->
 
     state.onChange 'mode', () ->
       $form.find("input[value=#{state.mode}]").attr('checked', 'checked')
+
+$.fn.year_range_slider = (state) ->
+  getRange = () ->
+    city = CITIES[state.city]
+    [ city.minYear, city.maxYear ]
+
+  getSelectedRange = () ->
+    [ state.minYear, state.maxYear ]
+
+  init = () =>
+    range = getRange()
+    $(this).slider({
+      min: getRange()[0],
+      max: getRange()[1],
+      range: true,
+      values: getSelectedRange(),
+      animate: true
+    })
+
+  updateState = () =>
+    minYear = $(this).slider('values', 0)
+    maxYear = $(this).slider('values', 1)
+    state.setMinYear(minYear)
+    state.setMaxYear(maxYear)
+
+  updateText = () =>
+    selectedRange = getSelectedRange()
+    if selectedRange[0] == selectedRange[1]
+      text = "#{selectedRange[0]}"
+    else
+      text = "#{selectedRange[0]}–#{selectedRange[1]}"
+    $(this).next().text(text)
+
+  state.onChange 'minYear', (year) =>
+    if year != $(this).slider('values', 0)
+      updateText()
+      $(this).slider('values', 0, year)
+
+  state.onChange 'maxYear', (year) =>
+    if year != $(this).slider('values', 1)
+      updateText()
+      $(this).slider('values', 1, year)
+
+  state.onChange 'city', (city) =>
+    $(this).slider('destroy')
+    init()
+
+  $(this).on 'slidechange', () ->
+    updateState()
+    updateText()
+
+  init()
+  updateText()

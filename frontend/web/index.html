@@ -392,7 +392,7 @@
     <!--[if lt IE 9]><script language="javascript" type="text/javascript" src="excanvas.min.js"></script><![endif]-->
     <script type="text/javascript" src="jquery.jqplot.min.js"></script>
     <script type="text/javascript" src="markerclusterer.js"></script>
-    <script type="text/javascript" src="app.js"></script>
+    <script type="text/javascript" src="app.js" charset="utf-8"></script>
     <script type="text/javascript">
       var mapDiv = document.getElementById('map');
       var map = new google.maps.Map(mapDiv, {
@@ -425,27 +425,7 @@
         manager.setCity($a.attr('href').split(/\#/)[1])
       });
 
-      $('div.expander').expander();
-
-      var $slider = $('div.year div.slider');
-      var cityYearRange = manager.getCityYearRange();
-      var yearRange = manager.getYearRange();
-      $slider.slider({ min: cityYearRange[0], max: cityYearRange[1], range: true, values: yearRange, animate: true});
-      var updateYearValue = function() {
-        var min = $slider.slider('values', 0);
-        var max = $slider.slider('values', 1);
-
-        var s = '' + min + '–' + max;
-        if (min == max) s = '' + min;
-        $('div.year div.value').text(s);
-
-        manager.setMinYear(min);
-        manager.setMaxYear(max);
-      };
-      updateYearValue();
-      $slider.on('slidechange', function(e, ui) {
-        updateYearValue();
-      });
+      $('div.year div.slider').year_range_slider(manager.state);
     </script>
   </body>
 </html>

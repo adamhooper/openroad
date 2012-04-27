@@ -1,5 +1,5 @@
 (function() {
-  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, make_expander, selectText,
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, AddressSearchForm, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, selectText,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   URL = 'http://localhost:8000/%{city}';
@@ -122,6 +122,8 @@
       this.setDestination(void 0);
       this.setOrigin(void 0);
       this.city = city;
+      this.setMinYear(this.minYear);
+      this.setMaxYear(this.maxYear);
       return this._changed('city', this.city);
     };
 
@@ -1144,24 +1146,6 @@
       return this.map.setZoom(zoom);
     };
 
-    Manager.prototype.getCityYearRange = function() {
-      var cityData;
-      cityData = CITIES[this.city];
-      return [cityData.minYear, cityData.maxYear];
-    };
-
-    Manager.prototype.getYearRange = function() {
-      return [this.state.minYear, this.state.maxYear];
-    };
-
-    Manager.prototype.setMinYear = function(year) {
-      return this.state.setMinYear(year);
-    };
-
-    Manager.prototype.setMaxYear = function(year) {
-      return this.state.setMaxYear(year);
-    };
-
     Manager.prototype.getCityBounds = function() {
       return CITIES[this.city].bounds;
     };
@@ -1211,26 +1195,6 @@
   })();
 
   window.Manager = Manager;
-
-  make_expander = function(div) {
-    var $h2;
-    $h2 = $(div).children('h2');
-    return $h2.on('click', function(e) {
-      var $inner;
-      $inner = $(div).children('div');
-      if ($inner.is(':visible')) {
-        return $inner.hide();
-      } else {
-        return $inner.show();
-      }
-    });
-  };
-
-  $.fn.expander = function() {
-    return $.each(this, function() {
-      return make_expander(this);
-    });
-  };
 
   AddressSearchForm = (function() {
 
@@ -1407,6 +1371,69 @@
         return $form.find("input[value=" + state.mode + "]").attr('checked', 'checked');
       });
     });
+  };
+
+  $.fn.year_range_slider = function(state) {
+    var getRange, getSelectedRange, init, updateState, updateText,
+      _this = this;
+    getRange = function() {
+      var city;
+      city = CITIES[state.city];
+      return [city.minYear, city.maxYear];
+    };
+    getSelectedRange = function() {
+      return [state.minYear, state.maxYear];
+    };
+    init = function() {
+      var range;
+      range = getRange();
+      return $(_this).slider({
+        min: getRange()[0],
+        max: getRange()[1],
+        range: true,
+        values: getSelectedRange(),
+        animate: true
+      });
+    };
+    updateState = function() {
+      var maxYear, minYear;
+      minYear = $(_this).slider('values', 0);
+      maxYear = $(_this).slider('values', 1);
+      state.setMinYear(minYear);
+      return state.setMaxYear(maxYear);
+    };
+    updateText = function() {
+      var selectedRange, text;
+      selectedRange = getSelectedRange();
+      if (selectedRange[0] === selectedRange[1]) {
+        text = "" + selectedRange[0];
+      } else {
+        text = "" + selectedRange[0] + "–" + selectedRange[1];
+      }
+      return $(_this).next().text(text);
+    };
+    state.onChange('minYear', function(year) {
+      if (year !== $(_this).slider('values', 0)) {
+        updateText();
+        return $(_this).slider('values', 0, year);
+      }
+    });
+    state.onChange('maxYear', function(year) {
+      if (year !== $(_this).slider('values', 1)) {
+        updateText();
+        return $(_this).slider('values', 1, year);
+      }
+    });
+    state.onChange('city', function(city) {
+      $(_this).slider('destroy');
+      return init();
+    });
+    $(this).on('slidechange', function() {
+      updateState();
+      return updateText();
+    });
+    init();
+    return updateText();
   };
 
 }).call(this);
