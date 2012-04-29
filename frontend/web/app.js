@@ -1223,7 +1223,7 @@
   _address_form_abort_clicking_on_map = void 0;
 
   $.fn.address_form = function(originOrDestination, state, map, callback) {
-    var $a, $error, $form, $input, $status, aPointString, aText, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, maybeLookupAddress, property, set, setByGeocoder, setError, setStatus, setter;
+    var $a, $error, $form, $input, $status, aPointString, aText, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, maybeLookupAddress, onTypeAddress, property, set, setByGeocoder, setError, setStatus, setter;
     if (callback == null) callback = void 0;
     property = originOrDestination;
     setByGeocoder = false;
@@ -1278,6 +1278,7 @@
         set(null);
       } else if (status === google.maps.GeocoderStatus.OK) {
         set(results[0].geometry.location);
+        if (typeof callback === "function") callback();
       } else {
         setError('Failed to look up address');
         set(null);
@@ -1307,14 +1308,16 @@
         return $input.val('(point on map)');
       }
     };
-    $form.on('submit blur', function(e) {
+    onTypeAddress = function(e) {
       e.preventDefault();
       if (typeof _address_form_abort_clicking_on_map === "function") {
         _address_form_abort_clicking_on_map();
       }
       _address_form_abort_clicking_on_map = void 0;
       return maybeLookupAddress();
-    });
+    };
+    $form.on('submit', onTypeAddress);
+    $input.on('blur', onTypeAddress);
     $a.on('click', function(e) {
       var mapListener;
       e.preventDefault();
@@ -1329,7 +1332,7 @@
       mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
         _address_form_abort_clicking_on_map();
         set(e.latLng);
-        if (callback) return callback();
+        return typeof callback === "function" ? callback() : void 0;
       });
       _address_form_abort_clicking_on_map = function() {
         google.maps.event.removeListener(mapListener);

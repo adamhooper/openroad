@@ -100,8 +100,14 @@
       var manager = new Manager(map, state, chartLink, dataLink, worstLocationsDiv);
 
       $('form#mode').mode_form(state);
-      $('form#origin').address_form('origin', state, map, function() { $('form#destination a').click(); });
-      $('form#destination').address_form('destination', state, map);
+      $('form#origin input[type=text]').focus();
+      $('form#origin').address_form('origin', state, map, function() {
+        $('form#destination input[type=text]').focus();
+        $('form#destination a').click();
+      });
+      $('form#destination').address_form('destination', state, map, function() {
+        $('form#destination input[type=text]').blur();
+      });
       $('div.year div.slider').year_range_slider(state);
       $('form#origin a').click();
 

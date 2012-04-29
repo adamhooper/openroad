@@ -962,6 +962,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       set(null)
     else if status == google.maps.GeocoderStatus.OK
       set(results[0].geometry.location)
+      callback?()
     else
       setError('Failed to look up address')
       set(null)
@@ -989,11 +990,14 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     else
       $input.val('(point on map)')
 
-  $form.on 'submit blur', (e) ->
+  onTypeAddress = (e) ->
     e.preventDefault()
     _address_form_abort_clicking_on_map?()
     _address_form_abort_clicking_on_map = undefined
     maybeLookupAddress()
+
+  $form.on('submit', onTypeAddress)
+  $input.on('blur', onTypeAddress)
 
   $a.on 'click', (e) ->
     e.preventDefault()
@@ -1007,7 +1011,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     mapListener = google.maps.event.addListenerOnce map, 'click', (e) ->
       _address_form_abort_clicking_on_map()
       set(e.latLng)
-      callback() if callback
+      callback?()
 
     _address_form_abort_clicking_on_map = () ->
       google.maps.event.removeListener(mapListener)
