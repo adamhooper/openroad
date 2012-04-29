@@ -137,6 +137,7 @@
     };
 
     State.prototype.setCity = function(city) {
+      if (this.city === city) return;
       this.clearAccidents();
       this.clearRoutes();
       this.setDestination(void 0);
@@ -1423,39 +1424,6 @@
     });
     init();
     return updateText();
-  };
-
-  $.fn.other_cities_a = function(state, $ul) {
-    return $(this).on('click', function(e) {
-      var $div;
-      e.preventDefault();
-      $div = $('<div id="other-cities-dialog"></div>');
-      $div.append($ul.clone().show());
-      $div.dialog({
-        buttons: [
-          {
-            text: 'Close',
-            click: function() {
-              return $(this).dialog('close');
-            }
-          }
-        ],
-        draggable: false,
-        modal: true,
-        resizable: false,
-        position: 'center',
-        title: 'Explore another city',
-        width: 'auto'
-      });
-      return $div.find('ul').on('click', function(e) {
-        var $a;
-        $a = $(e.target);
-        if (!$a.is('a')) return;
-        e.preventDefault();
-        state.setCity($a.attr('href').split(/\#/)[1]);
-        return $div.dialog('close');
-      });
-    });
   };
 
 }).call(this);

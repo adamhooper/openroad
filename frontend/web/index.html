@@ -105,10 +105,9 @@
       $('div.year div.slider').year_range_slider(state);
       $('form#origin a').click();
 
-      $('div#details div.other-cities a').other_cities_a(state, $('ul#city'));
-
-      $('div#details div.reset a').on('click', function(e) {
+      $('div#details div.reset a, div#details div.other-cities a').on('click', function(e) {
         e.preventDefault();
+        // When route disappears, city-selection pops up
         state.setOrigin(undefined);
         state.setDestination(undefined);
         $('form#origin a').click();
