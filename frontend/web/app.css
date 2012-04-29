@@ -25,6 +25,10 @@ div.origin-destination h2, form#mode h2 {
   padding: 0;
 }
 
+div.origin-destination h2 span.explanation {
+  color: #a1cde5;
+}
+
 form.origin-destination {
   margin: 0;
   padding: 0;
