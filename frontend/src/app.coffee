@@ -364,7 +364,7 @@ class AccidentsTableRenderer
       $div = $('<div id="data-dialog"></div>')
       $div.append(this.renderTable())
       $div.dialog({
-        buttons: [ { text: 'Close', click: () -> $(this).dialog('close') } ],
+        buttons: [ { text: 'Close', click: () -> $(this).dialog('destroy'); $div.remove() } ],
         draggable: false,
         modal: true,
         resizable: false,
@@ -447,7 +447,7 @@ class TrendChartRenderer
 
       $div = this.renderChartContainer()
       $div.dialog({
-        buttons: [ { text: 'Close', click: () -> $(this).dialog('close') } ],
+        buttons: [ { text: 'Close', click: () -> $(this).dialog('destroy'); $div.remove() } ],
         draggable: false,
         modal: true,
         resizable: false,

@@ -504,7 +504,8 @@
             {
               text: 'Close',
               click: function() {
-                return $(this).dialog('close');
+                $(this).dialog('destroy');
+                return $div.remove();
               }
             }
           ],
@@ -623,7 +624,8 @@
             {
               text: 'Close',
               click: function() {
-                return $(this).dialog('close');
+                $(this).dialog('destroy');
+                return $div.remove();
               }
             }
           ],
