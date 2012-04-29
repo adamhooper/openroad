@@ -102,6 +102,7 @@
       $('form#mode').mode_form(state);
       $('form#origin input[type=text]').focus();
       $('form#origin').address_form('origin', state, map, function() {
+        $('form#origin input[type=text]').blur();
         var $input = $('form#destination input[type=text]');
         if (!$input.val()) {
           $input.focus();
