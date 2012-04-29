@@ -102,8 +102,11 @@
       $('form#mode').mode_form(state);
       $('form#origin input[type=text]').focus();
       $('form#origin').address_form('origin', state, map, function() {
-        $('form#destination input[type=text]').focus();
-        $('form#destination a').click();
+        var $input = $('form#destination input[type=text]');
+        if (!$input.val()) {
+          $input.focus();
+          $('form#destination a').click();
+        }
       });
       $('form#destination').address_form('destination', state, map, function() {
         $('form#destination input[type=text]').blur();

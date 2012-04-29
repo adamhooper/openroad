@@ -521,7 +521,7 @@
     }
 
     AccidentsTableRenderer.prototype.renderTable = function() {
-      var $table, $tbody, $tds, $th, $theadTr, $tr, accident, accidents, heading, headings, i, key, keys, mode, modeAccidents, text, textNode, trClass, value, _i, _len, _len2, _len3, _ref, _ref2;
+      var $table, $tbody, $tds, $th, $theadTr, $tr, accident, accidents, heading, headings, i, key, keys, mode, modeAccidents, text, textNode, trClass, value, _i, _len, _len2, _len3, _ref, _ref2, _ref3;
       accidents = [];
       _ref = this.state.accidents;
       for (mode in _ref) {
@@ -560,45 +560,49 @@
       for (i = 0, _len = headings.length; i < _len; i++) {
         heading = headings[i];
         $th = $('<th></th>');
-        $th.attr('class', keys[i + 1]);
+        $th.attr('class', keys[i + 2]);
         $th.text(heading);
         $theadTr.append($th);
       }
       $tbody = $table.find('tbody');
       trClass = 'odd';
-      for (_i = 0, _len2 = accidents.length; _i < _len2; _i++) {
-        accident = accidents[_i];
-        $tr = $('<tr>' + [
-          (function() {
-            var _j, _len3, _results;
-            _results = [];
-            for (_j = 0, _len3 = keys.length; _j < _len3; _j++) {
-              key = keys[_j];
-              _results.push('<td></td>');
+      _ref3 = this.state.accidents;
+      for (mode in _ref3) {
+        modeAccidents = _ref3[mode];
+        for (_i = 0, _len2 = modeAccidents.length; _i < _len2; _i++) {
+          accident = modeAccidents[_i];
+          $tr = $(("<tr class=\"" + mode + "\">") + [
+            (function() {
+              var _j, _len3, _results;
+              _results = [];
+              for (_j = 0, _len3 = keys.length; _j < _len3; _j++) {
+                key = keys[_j];
+                _results.push('<td></td>');
+              }
+              return _results;
+            })()
+          ].join('') + '</tr>');
+          $tr.attr('class', trClass);
+          $tr.attr('id', "accident-" + mode + "-" + accident.id);
+          $tds = $tr.children();
+          if (trClass === 'odd') {
+            trClass = 'even';
+          } else {
+            trClass = 'odd';
+          }
+          for (i = 0, _len3 = keys.length; i < _len3; i++) {
+            key = keys[i];
+            heading = headings[i - 2];
+            $tds[i].className = key;
+            text = accident[heading] || accident[key];
+            if (key === 'distance_along_path') {
+              text = "" + text + "m (" + mode + ")";
             }
-            return _results;
-          })()
-        ].join('') + '</tr>');
-        $tr.attr('class', trClass);
-        $tr.attr('id', "accident-" + accident.id);
-        $tds = $tr.children();
-        if (trClass === 'odd') {
-          trClass = 'even';
-        } else {
-          trClass = 'odd';
+            textNode = document.createTextNode(text || '');
+            $tds[i].appendChild(textNode);
+          }
+          $tbody.append($tr);
         }
-        for (i = 0, _len3 = keys.length; i < _len3; i++) {
-          key = keys[i];
-          heading = headings[i - 2];
-          $tds[i].className = key;
-          text = accident[heading] || accident[key];
-          if (key === 'distance_along_path') text = "" + text + "m";
-          textNode = document.createTextNode(text || '');
-          $tds[i].appendChild(textNode);
-        }
-        mode = /bicycling/.test(accident.distance_along_path) && 'bicycling' || 'driving';
-        $tds[0].className += " " + mode;
-        $tbody.append($tr);
       }
       $table.on('dblclick', function(e) {
         return selectText($dataDiv[0]);
@@ -1258,8 +1262,8 @@
       var addressTyped;
       addressTyped = $input.val();
       if (addressTyped === lastAddressTyped) return;
-      setError(void 0);
-      if ($.trim(addressTyped || '')) {
+      if ($.trim(addressTyped || '').length > 0) {
+        setError(void 0);
         setStatus('Looking up address');
         lastAddressTyped = addressTyped;
         return geocoder.geocode({
@@ -1279,6 +1283,7 @@
       } else if (status === google.maps.GeocoderStatus.OK) {
         set(results[0].geometry.location);
         if (typeof callback === "function") callback();
+        true;
       } else {
         setError('Failed to look up address');
         set(null);
@@ -1288,14 +1293,16 @@
     lookupLatLng = function(latlng) {
       setError(void 0);
       if (latlng != null) {
+        lastAddressTyped = '…';
+        $input.val(lastAddressTyped);
         setStatus('Looking up address');
-        $input.val('…');
         return geocoder.geocode({
           latLng: latlng
         }, function(results, status) {
           return handleReverseGeocoderResult(results, status);
         });
       } else {
+        lastAddressTyped = void 0;
         $input.val('');
         return setStatus(void 0);
       }
@@ -1303,10 +1310,11 @@
     handleReverseGeocoderResult = function(results, status) {
       setStatus(void 0);
       if (status === google.maps.GeocoderStatus.OK) {
-        return $input.val(results[0].formatted_address);
+        lastAddressTyped = results[0].formatted_address;
       } else {
-        return $input.val('(point on map)');
+        lastAddressTyped = '(point on map)';
       }
+      return $input.val(lastAddressTyped);
     };
     onTypeAddress = function(e) {
       e.preventDefault();
@@ -1332,7 +1340,8 @@
       mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
         _address_form_abort_clicking_on_map();
         set(e.latLng);
-        return typeof callback === "function" ? callback() : void 0;
+        if (typeof callback === "function") callback();
+        return true;
       });
       _address_form_abort_clicking_on_map = function() {
         google.maps.event.removeListener(mapListener);

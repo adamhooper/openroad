@@ -407,33 +407,31 @@ class AccidentsTableRenderer
     $theadTr = $table.find('thead').children()
     for heading, i in headings
       $th = $('<th></th>')
-      $th.attr('class', keys[i+1])
+      $th.attr('class', keys[i+2])
       $th.text(heading)
       $theadTr.append($th)
 
     $tbody = $table.find('tbody')
     trClass = 'odd'
 
-    for accident in accidents
-      $tr = $('<tr>' + ['<td></td>' for key in keys].join('') + '</tr>')
-      $tr.attr('class', trClass)
-      $tr.attr('id', "accident-#{accident.id}")
-      $tds = $tr.children()
+    for mode, modeAccidents of @state.accidents
+      for accident in modeAccidents
+        $tr = $("<tr class=\"#{mode}\">" + ['<td></td>' for key in keys].join('') + '</tr>')
+        $tr.attr('class', trClass)
+        $tr.attr('id', "accident-#{mode}-#{accident.id}")
+        $tds = $tr.children()
 
-      if trClass == 'odd' then trClass = 'even' else trClass = 'odd'
+        if trClass == 'odd' then trClass = 'even' else trClass = 'odd'
 
-      for key, i in keys
-        heading = headings[i-2]
-        $tds[i].className = key
-        text = accident[heading] || accident[key]
-        text = "#{text}m" if key == 'distance_along_path'
-        textNode = document.createTextNode(text || '')
-        $tds[i].appendChild(textNode)
+        for key, i in keys
+          heading = headings[i-2]
+          $tds[i].className = key
+          text = accident[heading] || accident[key]
+          text = "#{text}m (#{mode})" if key == 'distance_along_path'
+          textNode = document.createTextNode(text || '')
+          $tds[i].appendChild(textNode)
 
-      mode = /bicycling/.test(accident.distance_along_path) && 'bicycling' || 'driving'
-      $tds[0].className += " #{mode}"
-
-      $tbody.append($tr)
+        $tbody.append($tr)
 
     $table.on 'dblclick', (e) ->
       selectText($dataDiv[0])
@@ -941,9 +939,8 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     addressTyped = $input.val()
     return if addressTyped == lastAddressTyped
 
-    setError(undefined)
-
-    if $.trim(addressTyped || '')
+    if $.trim(addressTyped || '').length > 0
+      setError(undefined)
       setStatus('Looking up address')
       lastAddressTyped = addressTyped
       geocoder.geocode({
@@ -963,6 +960,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     else if status == google.maps.GeocoderStatus.OK
       set(results[0].geometry.location)
       callback?()
+      true
     else
       setError('Failed to look up address')
       set(null)
@@ -972,23 +970,26 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     setError(undefined)
 
     if latlng?
+      lastAddressTyped = '…'
+      $input.val(lastAddressTyped)
       setStatus('Looking up address')
-      $input.val('…')
       geocoder.geocode({
         latLng: latlng
       }, (results, status) ->
         handleReverseGeocoderResult(results, status)
       )
     else
+      lastAddressTyped = undefined
       $input.val('')
       setStatus(undefined)
 
   handleReverseGeocoderResult = (results, status) ->
     setStatus(undefined)
     if status == google.maps.GeocoderStatus.OK
-      $input.val(results[0].formatted_address)
+      lastAddressTyped = results[0].formatted_address
     else
-      $input.val('(point on map)')
+      lastAddressTyped = '(point on map)'
+    $input.val(lastAddressTyped)
 
   onTypeAddress = (e) ->
     e.preventDefault()
@@ -1012,6 +1013,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       _address_form_abort_clicking_on_map()
       set(e.latLng)
       callback?()
+      true
 
     _address_form_abort_clicking_on_map = () ->
       google.maps.event.removeListener(mapListener)
