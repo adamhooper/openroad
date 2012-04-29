@@ -1,0 +1,381 @@
+html, body {
+  width: 950px;
+  margin: 0 auto;
+  padding: 0;
+  font-size: 20px; /* makes math easy */
+}
+
+* {
+  font-family: 'PT Sans Narrow', sans-serif;
+}
+
+div.forms {
+  position: relative;
+}
+
+div.origin-destination, form#mode {
+  color: #223b5d;
+  margin-bottom: .25em;
+}
+
+div.origin-destination h2, form#mode h2 {
+  font-weight: normal;
+  font-size: 1.2em;
+  margin: 0;
+  padding: 0;
+}
+
+form.origin-destination {
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+form.origin-destination label {
+  color: #a1cde5;
+  float: left;
+  width: 3em;
+}
+
+form.origin-destination div.status, form.origin-destination div.error {
+  color: red;
+  position: absolute;
+  left: 25em;
+  top: 2px;
+  font-size: .8em;
+  line-height: 1.55;
+  margin-left: -8em;
+  text-align: right;
+  width: 8em;
+}
+
+form.origin-destination input.text {
+  border: 2px solid #223b5d;
+  background: #f9f298;
+  padding-left: 5px;
+  padding-right: 5px;
+  width: 25em;
+}
+
+form.origin-destination a {
+  text-decoration: none;
+  color: #223b5d;
+  font-size: .8em;
+  line-height: 1.25;
+}
+
+form.origin-destination a.clicking {
+  color: #a1cde5;
+}
+
+form#mode {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 13em;
+}
+
+form#mode input {
+  display: none;
+}
+
+form#mode label {
+  padding-left: 22px;
+  min-height: 18px;
+  margin-left: .5em;
+  cursor: pointer;
+  background: url(./icons/radio-mode.png) no-repeat left center;
+}
+
+form#mode label.selected {
+  font-weight: bold;
+  background: url(./icons/radio-mode-selected.png) no-repeat left center;
+}
+
+div#map {
+  width: 100%;
+  height: 400px;
+}
+
+ul#legend {
+  display: block;
+  margin: 0;
+  padding: 2px 0 8px;
+  text-align: center;
+  height: 33px;
+  line-height: 33px;
+  border-bottom: 2px solid #f9f298;
+  color: #4d4d4d;
+  list-style: none;
+}
+
+ul#legend li {
+  display: inline-block;
+  font-size: .8em;
+  height: 33px;
+  vertical-align: middle;
+  margin: 0 .5em;
+}
+
+ul#legend img, ul#legend span {
+  display: inline-block;
+  vertical-align: middle;
+  padding-right: .2em;
+}
+
+div#details {
+  margin-top: .5em;
+  position: relative;
+  color: #223b5d;
+  padding-top: 5.5em;
+}
+
+div#details h2 {
+  font-size: 1em;
+  font-weight: normal;
+  margin: 0;
+  padding: 0;
+  line-height: 2;
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1;
+}
+
+div#details h2 a {
+  color: #223b5d;
+  text-decoration: none;
+  display: block;
+  padding-bottom: 83px;
+}
+
+div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities, div#details div.reset {
+  position: absolute;
+  top: 0;
+}
+
+div#details div.year {
+  left: 0;
+  width: 32%;
+}
+
+div#details div.chart {
+  left: 32%;
+  width: 17%;
+}
+
+div#details div.data {
+  left: 49%;
+  width: 17%;
+}
+
+div#details div.other-cities {
+  border-left: 2px solid #f9f298;
+  left: 66%;
+  width: 17%;
+}
+
+div#details div.reset {
+  left: 83%;
+  width: 17%;
+}
+
+div#details div.year .slider {
+  margin-top: 1.5em;
+}
+
+div#details div.year .value {
+  text-align: center;
+  margin-top: 2.5em;
+}
+
+.ui-corner-all {
+  -moz-border-radius: .3em;
+  -webkit-border-radius: .3em;
+  -khtml-border-radius: .3em;
+  border-radius: .3em;
+}
+
+.ui-slider-horizontal {
+  height: 4px;
+  background: #223b5d;
+  border: none;
+  border-top: .4em solid white;
+  border-bottom: .4em solid white;
+  position: absolute;
+  left: .4em;
+  right: .4em;
+  margin: 0 4px 0 0;
+  font-size: 1em;
+  -moz-border-radius: 0;
+  -webkit-border-radius: 0;
+  -khtml-border-radius: 0;
+  border-radius: 0;
+}
+
+.ui-slider .ui-slider-range {
+  height: .8em;
+  top: -.4em;
+  font-size: 1em;
+  border: none;
+  margin-left: 2px;
+  border-top: 2px solid #223b5d;
+  border-bottom: 2px solid #223b5d;
+  background: #a2cd34;
+  z-index: 3;
+}
+
+.ui-slider .ui-slider-handle {
+  height: .8em;
+  top: -.4em;
+  width: .8em;
+  margin-left: -.4em;
+  border: 2px solid #223b5d;
+  background: #a2cd34;
+}
+
+.ui-slider > .ui-slider-handle {
+  cursor: w-resize;
+}
+
+.ui-slider > .ui-slider-handle + .ui-slider-handle {
+  cursor: e-resize;
+}
+
+div#details div.chart a {
+  background: url(icons/accidents-by-year-small.png) no-repeat center bottom;
+}
+
+div#details div.data a {
+  background: url(icons/accident-data-small.png) no-repeat center bottom;
+}
+
+div#details div.other-cities a {
+  background: url(icons/choose-another-city-small.png) no-repeat center bottom;
+}
+
+div#details div.reset a {
+  background: url(icons/reset-small.png) no-repeat center bottom;
+}
+
+div#worst-locations {
+  border-top: 2px solid #f9f298;
+  display: none;
+}
+
+div#worst-locations h2 {
+  padding-top: .25em;
+  text-align: left;
+  line-height: 1.6;
+  font-size: 1.2em;
+}
+
+div#worst-locations ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+div#worst-locations li {
+  float: left;
+  width: 316px;
+  margin: 0;
+  padding: 0;
+  font-size: .8em;
+  color: #4d4d4d;
+}
+
+div#worst-locations li.top-spot-0, div#worst-locations li.top-spot-1 {
+  padding-right: 1px;
+}
+
+div#worst-locations .image-container {
+  position: relative;
+  height: 0;
+  overflow: hidden;
+  padding-bottom: 56.25%;
+  max-width: 640px;
+}
+
+div#worst-locations img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+ul#city {
+  margin: .5em 0;
+  padding: 0;
+  list-style: none;
+}
+
+ul#city li {
+  float: left;
+  width: 150px;
+  height: 90px;
+  padding-left: 10px;
+}
+
+ul#city li.first {
+  padding-left: 0;
+}
+
+ul#city a {
+  display: block;
+  height: 90px;
+  line-height: 90px;
+  font-size: 70px;
+  text-align: center;
+  font-weight: bold;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: white;
+}
+
+ul#city li.selected a {
+  color: #f9f298;
+}
+
+ul#city a.vancouver {
+  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=49.26901,-123.10065);
+}
+ul#city a.calgary {
+  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=51.03783,-114.09467);
+}
+ul#city a.toronto {
+  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=43.665122,-79.411213);
+}
+ul#city a.ottawa {
+  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=45.372683,-75.664255);
+}
+ul#city a.montreal {
+  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=45.517061,-73.564721);
+}
+ul#city a.halifax {
+  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=44.615891,-63.614783);
+}
+
+div#data-dialog {
+  overflow: auto;
+}
+
+div#data-dialog table {
+  border-collapse: collapse;
+  border: none;
+}
+
+div#data-dialog th, div#data-dialog td {
+  text-align: left;
+  white-space: nowrap;
+  padding: 2px 4px;
+  font-size: .75em;
+}
+
+div#data-dialog td.id, div#data-dialog td.distance_along_path {
+  text-align: right;
+}
+
+div#data-dialog .address {
+  display: none;
+}
