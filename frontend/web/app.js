@@ -1,5 +1,5 @@
 (function() {
-  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, originalClusterIconCreateCss, selectText, show_accidents_dialog, syncOriginDestinationMarkers, _address_form_abort_clicking_on_map,
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, originalClusterIconCreateCss, selectText, showFusionTablesLayer, show_accidents_dialog, syncOriginDestinationMarkers, _address_form_abort_clicking_on_map,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   URL = 'http://localhost:8000/%{city}';
@@ -45,6 +45,7 @@
       zoom: 13,
       minYear: 2001,
       maxYear: 2010,
+      fusionTableId: 3723514,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.962002, -76.355766), new google.maps.LatLng(45.536541, -75.246033))
     },
     montreal: {
@@ -104,6 +105,7 @@
       this.accidents = {};
       this.listeners = {};
       this.frozen = {};
+      this.entireCity = false;
     }
 
     State.prototype.onChange = function(key, callback) {
@@ -150,6 +152,7 @@
       this.clearRoutes();
       this.setDestination(void 0);
       this.setOrigin(void 0);
+      this.setEntireCity(false);
       this.city = city;
       this.setMinYear(this.minYear);
       this.setMaxYear(this.maxYear);
@@ -159,13 +162,15 @@
     State.prototype.setMode = function(mode) {
       if (this.mode === mode) return;
       this.mode = mode;
-      return this._changed('mode', this.mode);
+      this._changed('mode', this.mode);
+      return this.setEntireCity(false);
     };
 
     State.prototype.setOrigin = function(latlng) {
       if (latlng === this.origin) return;
       this.clearAccidents();
       this.clearRoutes();
+      this.setEntireCity(false);
       this.origin = latlng;
       return this._changed('origin', this.origin);
     };
@@ -174,6 +179,7 @@
       if (latlng === this.destination) return;
       this.clearAccidents();
       this.clearRoutes();
+      this.setEntireCity(false);
       this.destination = latlng;
       return this._changed('destination', this.destination);
     };
@@ -230,6 +236,12 @@
     State.prototype.clearAccidents = function() {
       this.accidents = {};
       return this._changed('accidents', this.accidents);
+    };
+
+    State.prototype.setEntireCity = function(entireCity) {
+      if (entireCity === this.entireCity) return;
+      this.entireCity = entireCity;
+      return this._changed('entireCity', this.entireCity);
     };
 
     return State;
@@ -346,6 +358,7 @@
       var mode, _i, _len, _ref,
         _this = this;
       this.state = state;
+      this.map = map;
       this.renderers = {};
       this._blockingStateChanges = {};
       _ref = ['bicycling', 'driving'];
@@ -358,6 +371,9 @@
         return _this.refresh();
       });
       this.state.onChange('mode', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('entireCity', function() {
         return _this.refresh();
       });
     }
@@ -373,7 +389,7 @@
         if (route && (this.state.mode === 'both' || mode === this.state.mode)) {
           this._blockingStateChanges[mode] = true;
           this.renderers[mode].setDirections(route);
-          this.renderers[mode].setMap(map);
+          this.renderers[mode].setMap(!this.state.entireCity && this.map || null);
           _results.push(this._blockingStateChanges[mode] = false);
         } else {
           _results.push(this.renderers[mode].setMap(null));
@@ -792,6 +808,9 @@
       this.state.onChange('mode', function() {
         return _this.refresh();
       });
+      this.state.onChange('entireCity', function() {
+        return _this.refresh();
+      });
       google.maps.event.addListener(this.clusterer, 'click', function(cluster) {
         var marker;
         return show_accidents_dialog(_this.state, (function() {
@@ -896,6 +915,11 @@
       var marker, markerKeys, mode, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
       this.clusterer.removeMarkers(this.markers, true);
       this.markers = [];
+      if (this.state.entireCity) {
+        this.markerArrays = {};
+        this.clusterer.repaint();
+        return;
+      }
       _ref = ['bicycling', 'driving'];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         mode = _ref[_i];
@@ -944,6 +968,9 @@
         return _this.refresh();
       });
       this.state.onChange('mode', function() {
+        return _this.refresh();
+      });
+      this.state.onChange('entireCity', function() {
         return _this.refresh();
       });
     }
@@ -1167,7 +1194,7 @@
       _ref = ['bicycling', 'driving'];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         mode = _ref[_i];
-        if ((this.state.accidents[mode] != null) && (this.state.mode === 'both' || this.state.mode === mode)) {
+        if ((this.state.accidents[mode] != null) && (this.state.mode === 'both' || this.state.mode === mode) && !this.state.entireCity) {
           if (!(this.topGroupsByMode[mode] != null)) {
             this.topGroupsByMode[mode] = this._accidentsToTopGroups(this.state.accidents[mode]);
             changed = true;
@@ -1240,7 +1267,7 @@
   };
 
   syncOriginDestinationMarkers = function(state, map) {
-    var key, keys, markers, movedByUs, sync, _i, _len;
+    var key, keys, markers, movedByUs, sync, syncVisible, _i, _len;
     keys = ['origin', 'destination'];
     markers = {};
     movedByUs = false;
@@ -1252,6 +1279,19 @@
       } else {
         return markers[key].setMap(null);
       }
+    };
+    syncVisible = function() {
+      var key, marker, _results;
+      _results = [];
+      for (key in markers) {
+        marker = markers[key];
+        if ((state[key] != null) && !state.entireCity) {
+          _results.push(marker.setMap(map));
+        } else {
+          _results.push(marker.setMap(null));
+        }
+      }
+      return _results;
     };
     for (_i = 0, _len = keys.length; _i < _len; _i++) {
       key = keys[_i];
@@ -1285,8 +1325,50 @@
     state.onChange('destination', function(position) {
       return sync('destination', position);
     });
+    state.onChange('entireCity', function(entireCity) {
+      return syncVisible();
+    });
     sync('origin', state.origin);
     return sync('destination', state.destination);
+  };
+
+  showFusionTablesLayer = function(state, map) {
+    var fusionTableId, getOptions1, getOptions2, layer, refresh, refreshFusionTableId;
+    fusionTableId = CITIES[state.city].fusionTableId;
+    getOptions1 = function() {
+      return {
+        query: {
+          select: 'Latitude',
+          from: fusionTableId,
+          where: "Time >= '" + state.minYear + "' AND Time < '" + (state.maxYear + 1) + "'"
+        },
+        clickable: state.entireCity
+      };
+    };
+    getOptions2 = function() {
+      return {
+        heatmap: {
+          enabled: !state.entireCity
+        }
+      };
+    };
+    layer = new google.maps.FusionTablesLayer($.extend(getOptions1(), getOptions2()));
+    layer.setMap(fusionTableId && map || null);
+    refresh = function() {
+      layer.setOptions(getOptions1());
+      return window.setTimeout((function() {
+        return layer.setOptions(getOptions2());
+      }), 200);
+    };
+    refreshFusionTableId = function() {
+      fusionTableId = CITIES[state.city].fusionTableId;
+      layer.setMap(fusionTableId && map || null);
+      return refresh();
+    };
+    state.onChange('minYear', refresh);
+    state.onChange('maxYear', refresh);
+    state.onChange('city', refreshFusionTableId);
+    return state.onChange('entireCity', refresh);
   };
 
   Manager = (function() {
@@ -1301,6 +1383,7 @@
       new WorstLocationsRenderer(state, worstLocationsDiv, map);
       keepMapInStateBounds(map, state);
       syncOriginDestinationMarkers(state, map);
+      showFusionTablesLayer(state, map);
     }
 
     return Manager;

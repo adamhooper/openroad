@@ -58,8 +58,8 @@
       <div class="other-cities">
         <h2><a href="#">Explore another city</a></h2>
       </div>
-      <div class="reset">
-        <h2><a href="#">Reset map</a></h2>
+      <div class="entire-city">
+        <h2><a href="#">View city-wide accidents</a></h2>
       </div>
 
       <div id="worst-locations"></div>
@@ -127,10 +127,40 @@
       $('form#destination').address_form('destination', state, map, function() {
         $('form#destination input[type=text]').blur();
       });
+
+      $('form#origin input, form#destination input').on('focus', function(e) {
+        state.setEntireCity(false);
+      });
       $('div.year div.slider').year_range_slider(state);
       $('form#origin a').click();
 
-      $('div#details div.reset a, div#details div.other-cities a').on('click', function(e) {
+      $('div#details div.entire-city a').on('click', function(e) {
+        e.preventDefault();
+        if (state.entireCity) {
+          state.setEntireCity(false);
+        } else {
+          state.setEntireCity(true);
+        }
+      });
+
+      var entireCityLinkText = $('div#details div.entire-city a').text();
+      state.onChange('entireCity', function(entireCity) {
+        var $dataLinks = $('div#details div.chart a, div#details div.data a');
+        var $entireCityLink = $('div#details div.entire-city a');
+        if (entireCity) {
+          $dataLinks.css('opacity', 0.5);
+          $entireCityLink.text('Back to your route');
+        } else {
+          $dataLinks.css('opacity', 1);
+          $entireCityLink.text(entireCityLinkText);
+        }
+      });
+
+      $('div#details div.chart a, div#details div.data a').click(function() {
+        state.setEntireCity(false);
+      });
+
+      $('div#details div.other-cities a').on('click', function(e) {
         e.preventDefault();
         // When route disappears, city-selection pops up
         state.setOrigin(undefined);
@@ -138,7 +168,7 @@
         $('form#origin a').click();
       });
 
-      state.onChange('accidents', function(accidents) {
+      state.onChange('routes', function(accidents) {
         var $citySelector = $('ul#city');
         var $legend = $('ul#legend');
         var $details = $('div#details');

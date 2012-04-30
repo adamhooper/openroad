@@ -48,6 +48,7 @@ CITIES = {
     zoom: 13,
     minYear: 2001,
     maxYear: 2010,
+    fusionTableId: 3723514,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(44.962002, -76.355766),
       new google.maps.LatLng(45.536541, -75.246033)
@@ -111,6 +112,7 @@ class State
     @accidents = {} # keyed by 'bicycling' and 'driving'
     @listeners = {}
     @frozen = {}
+    @entireCity = false
     # @routes is always set before @accidents
 
   onChange: (key, callback) ->
@@ -147,6 +149,7 @@ class State
     this.clearRoutes()
     this.setDestination(undefined)
     this.setOrigin(undefined)
+    this.setEntireCity(false)
     @city = city
     # clamp date range
     this.setMinYear(@minYear)
@@ -157,11 +160,13 @@ class State
     return if @mode == mode
     @mode = mode
     this._changed('mode', @mode)
+    this.setEntireCity(false)
 
   setOrigin: (latlng) ->
     return if latlng == @origin
     this.clearAccidents()
     this.clearRoutes()
+    this.setEntireCity(false)
     @origin = latlng
     this._changed('origin', @origin)
 
@@ -169,6 +174,7 @@ class State
     return if latlng == @destination
     this.clearAccidents()
     this.clearRoutes()
+    this.setEntireCity(false)
     @destination = latlng
     this._changed('destination', @destination)
 
@@ -213,6 +219,11 @@ class State
   clearAccidents: () ->
     @accidents = {}
     this._changed('accidents', @accidents)
+
+  setEntireCity: (entireCity) ->
+    return if entireCity == @entireCity
+    @entireCity = entireCity
+    this._changed('entireCity', @entireCity)
 
 window.State = State
 
@@ -280,7 +291,7 @@ class RouteFinder
       @state.setRoute(mode, result)
 
 class RouteRenderer
-  constructor: (@state, map) ->
+  constructor: (@state, @map) ->
     @renderers = {}
     @_blockingStateChanges = {}
     for mode in [ 'bicycling', 'driving' ]
@@ -289,6 +300,7 @@ class RouteRenderer
 
     @state.onChange('routes', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
+    @state.onChange('entireCity', () => this.refresh())
 
   refresh: () ->
     for mode in [ 'bicycling', 'driving' ]
@@ -297,7 +309,7 @@ class RouteRenderer
       if route && (@state.mode == 'both' || mode == @state.mode)
         @_blockingStateChanges[mode] = true
         @renderers[mode].setDirections(route)
-        @renderers[mode].setMap(map)
+        @renderers[mode].setMap(!@state.entireCity && @map || null)
         @_blockingStateChanges[mode] = false
       else
         @renderers[mode].setMap(null)
@@ -579,6 +591,7 @@ class AccidentsMarkerRenderer
 
     @state.onChange('accidents', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
+    @state.onChange('entireCity', () => this.refresh())
 
     google.maps.event.addListener @clusterer, 'click', (cluster) =>
       show_accidents_dialog(@state, ( marker.accidentUniqueKey for marker in cluster.getMarkers() ))
@@ -648,6 +661,11 @@ class AccidentsMarkerRenderer
     @clusterer.removeMarkers(@markers, true)
     @markers = []
 
+    if @state.entireCity
+      @markerArrays = {}
+      @clusterer.repaint()
+      return
+
     for mode in [ 'bicycling', 'driving' ]
       if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode)
         # There are accidents we want to render
@@ -683,6 +701,7 @@ class WorstLocationsRenderer
 
     @state.onChange('accidents', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
+    @state.onChange('entireCity', () => this.refresh())
 
   _accidentsToTopGroups: (accidents) ->
     objs = []
@@ -880,7 +899,7 @@ class WorstLocationsRenderer
     changed = false
 
     for mode in [ 'bicycling', 'driving' ]
-      if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode)
+      if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode) && !@state.entireCity
         # There are accidents we want to render
         if !@topGroupsByMode[mode]?
           # And we aren't rendering them
@@ -935,6 +954,13 @@ syncOriginDestinationMarkers = (state, map) ->
     else
       markers[key].setMap(null)
 
+  syncVisible = () ->
+    for key, marker of markers
+      if state[key]? && !state.entireCity
+        marker.setMap(map)
+      else
+        marker.setMap(null)
+
   for key in keys
     markers[key] = new google.maps.Marker({
       clickable: false,
@@ -961,9 +987,49 @@ syncOriginDestinationMarkers = (state, map) ->
 
   state.onChange('origin', (position) -> sync('origin', position))
   state.onChange('destination', (position) -> sync('destination', position))
+  state.onChange('entireCity', (entireCity) -> syncVisible())
 
   sync('origin', state.origin)
   sync('destination', state.destination)
+
+showFusionTablesLayer = (state, map) ->
+  fusionTableId = CITIES[state.city].fusionTableId
+
+  getOptions1 = () ->
+    {
+      query: {
+        select: 'Latitude',
+        from: fusionTableId,
+        where: "Time >= '#{state.minYear}' AND Time < '#{state.maxYear + 1}'",
+      },
+      clickable: state.entireCity,
+    }
+  # Google Fusion Tables has a bug today (2012-04-30). Setting heatmap at the
+  # same time as others gives "Undefined property '0'...".
+  # Workaround: we split up our setOptions() calls into two parts.
+  getOptions2 = () ->
+    {
+      heatmap: {
+        enabled: !state.entireCity,
+      },
+    }
+
+  layer = new google.maps.FusionTablesLayer($.extend(getOptions1(), getOptions2()))
+  layer.setMap(fusionTableId && map || null)
+
+  refresh = () ->
+    layer.setOptions(getOptions1())
+    window.setTimeout((() -> layer.setOptions(getOptions2())), 200)
+
+  refreshFusionTableId = () ->
+    fusionTableId = CITIES[state.city].fusionTableId
+    layer.setMap(fusionTableId && map || null)
+    refresh()
+
+  state.onChange('minYear', refresh)
+  state.onChange('maxYear', refresh)
+  state.onChange('city', refreshFusionTableId)
+  state.onChange('entireCity', refresh)
 
 class Manager
   constructor: (map, state, chartLink, dataLink, worstLocationsDiv) ->
@@ -980,6 +1046,7 @@ class Manager
     new WorstLocationsRenderer(state, worstLocationsDiv, map)
     keepMapInStateBounds(map, state)
     syncOriginDestinationMarkers(state, map)
+    showFusionTablesLayer(state, map)
 
 window.Manager = Manager
 

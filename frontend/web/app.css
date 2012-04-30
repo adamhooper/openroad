@@ -151,7 +151,7 @@ div#details h2 a {
   padding-bottom: 83px;
 }
 
-div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities, div#details div.reset {
+div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities, div#details div.entire-city {
   position: absolute;
   top: 0;
 }
@@ -177,7 +177,7 @@ div#details div.other-cities {
   width: 17%;
 }
 
-div#details div.reset {
+div#details div.entire-city {
   left: 83%;
   width: 17%;
 }
@@ -256,8 +256,8 @@ div#details div.other-cities a {
   background: url(icons/choose-another-city-small.png) no-repeat center bottom;
 }
 
-div#details div.reset a {
-  background: url(icons/reset-small.png) no-repeat center bottom;
+div#details div.entire-city a {
+  background: url(icons/entire-city-small.png) no-repeat center bottom;
 }
 
 div#worst-locations {
