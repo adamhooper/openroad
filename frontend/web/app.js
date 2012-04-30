@@ -650,7 +650,7 @@
     }
 
     TrendChartRenderer.prototype.renderChartContainer = function() {
-      return $('<div id="chart-dialog"><div id="chart-dialog-inner"></div></div>');
+      return $('<div id="chart-dialog"><p class="blurb">Is there a trend along your route? Many events can correlate: construction, a new bike lane, more attentive police or dumb luck. Here we show, for each year, the number of reported collisions between car and bike.</p><div id="chart-dialog-inner"></div></div>');
     };
 
     TrendChartRenderer.prototype._modeToColor = function(mode) {
@@ -658,7 +658,7 @@
     };
 
     TrendChartRenderer.prototype.renderChartInChartContainer = function($div) {
-      var accident, accidents, color, innerId, mode, plotSeries, plotSeriesOptions, series, seriesEntry, seriesMaker, _i, _len, _ref;
+      var accident, accidentTickInterval, accidents, color, innerId, maxAccidents, mode, modeSeries, plotSeries, plotSeriesOptions, series, seriesEntry, seriesMaker, tuple, yearTickInterval, _i, _j, _len, _len2, _ref;
       series = {};
       _ref = this.state.accidents;
       for (mode in _ref) {
@@ -670,6 +670,14 @@
         }
         series[mode] = seriesMaker.getSeries();
       }
+      maxAccidents = 1;
+      for (mode in series) {
+        modeSeries = series[mode];
+        for (_j = 0, _len2 = modeSeries.length; _j < _len2; _j++) {
+          tuple = modeSeries[_j];
+          if (tuple[1] > maxAccidents) maxAccidents = tuple[1];
+        }
+      }
       plotSeries = [];
       plotSeriesOptions = [];
       for (mode in series) {
@@ -677,29 +685,59 @@
         color = this._modeToColor(mode);
         plotSeries.push(seriesEntry);
         plotSeriesOptions.push({
-          color: color
+          color: color,
+          label: mode.substring(0, 1).toUpperCase() + mode.substring(1)
         });
       }
-      innerId = $div.children().attr('id');
+      innerId = $div.children('div').attr('id');
+      yearTickInterval = Math.floor((this.state.maxYear - this.state.minYear + 1) / 10) + 1;
+      accidentTickInterval = Math.floor(maxAccidents / 10) + 1;
       return $.jqplot(innerId, plotSeries, {
         highlighter: {
           show: true,
-          sizeAdjust: 8
+          sizeAdjust: 12
         },
         cursor: {
           show: false
         },
         axes: {
           xaxis: {
-            max: 2012,
-            tickInterval: 1
+            min: this.state.minYear - 1,
+            max: this.state.maxYear,
+            tickInterval: yearTickInterval,
+            showTickMarks: false,
+            tickOptions: {
+              showGridline: false,
+              showMark: false
+            }
           },
           yaxis: {
             min: 0,
-            tickInterval: 2
+            tickInterval: accidentTickInterval,
+            showTickMarks: false,
+            tickOptions: {
+              showMark: false
+            }
           }
         },
-        series: plotSeriesOptions
+        grid: {
+          gridLineColor: 'white',
+          background: '#f9f298',
+          shadow: false,
+          borderWidth: 0
+        },
+        seriesDefaults: {
+          shadow: false,
+          markerOptions: {
+            size: 12,
+            shadow: false
+          }
+        },
+        series: plotSeriesOptions,
+        legend: {
+          show: this.state.mode === 'both',
+          location: 'sw'
+        }
       });
     };
 

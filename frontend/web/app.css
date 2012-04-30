@@ -199,7 +199,7 @@ div#details div.year .value {
   border-radius: .3em;
 }
 
-.ui-slider-horizontal {
+div.year .ui-slider-horizontal {
   height: 4px;
   background: #223b5d;
   border: none;
@@ -396,6 +396,14 @@ div#data-dialog .address {
   font-size: 1em;
 }
 
+.ui-widget-content {
+  background: white;
+  -moz-border-radius: 0;
+  -webkit-border-radius: 0;
+  -khtml-border-radius: 0;
+  border-radius: 0;
+}
+
 .ui-widget-header {
   border: none;
   background: none;
@@ -468,10 +476,26 @@ div#data-dialog .address {
   font-size: .9em;
 }
 
+.ui-dialog .ui-dialog-content {
+  padding: .5em 0;
+}
+
 div.dialog-accident-data .ui-dialog-title {
   background: url(./icons/dialog-accident-data.png) no-repeat left center;
 }
 
 div.dialog-accidents-by-year .ui-dialog-title {
   background: url(./icons/dialog-accidents-by-year.png) no-repeat left center;
+}
+
+div#chart-dialog {
+  overflow: visible;
+}
+
+div.dialog-accidents-by-year #chart-dialog-inner {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  top: 2.75em;
 }

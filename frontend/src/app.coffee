@@ -462,7 +462,7 @@ class TrendChartRenderer
       , 50)
 
   renderChartContainer: () ->
-    $('<div id="chart-dialog"><div id="chart-dialog-inner"></div></div>')
+    $('<div id="chart-dialog"><p class="blurb">Is there a trend along your route? Many events can correlate: construction, a new bike lane, more attentive police or dumb luck. Here we show, for each year, the number of reported collisions between car and bike.</p><div id="chart-dialog-inner"></div></div>')
 
   _modeToColor: (mode) ->
     COLORS[mode]
@@ -475,24 +475,71 @@ class TrendChartRenderer
         seriesMaker.add(accident.Time.split(/-/)[0]) # year
       series[mode] = seriesMaker.getSeries()
 
+    maxAccidents = 1
+    for mode, modeSeries of series
+      for tuple in modeSeries
+        maxAccidents = tuple[1] if tuple[1] > maxAccidents
+
     plotSeries = []
     plotSeriesOptions = []
 
     for mode, seriesEntry of series
       color = this._modeToColor(mode)
       plotSeries.push(seriesEntry)
-      plotSeriesOptions.push({color: color})
+      plotSeriesOptions.push({color: color, label: mode.substring(0, 1).toUpperCase() + mode.substring(1) })
 
-    innerId = $div.children().attr('id')
+    innerId = $div.children('div').attr('id')
+
+    # No more than 10 ticks horizontally
+    yearTickInterval = Math.floor((@state.maxYear - @state.minYear + 1) / 10) + 1
+
+    # No more than 10 ticks vertically
+    accidentTickInterval = Math.floor(maxAccidents / 10) + 1
 
     $.jqplot(innerId, plotSeries, {
-      highlighter: { show: true, sizeAdjust: 8 },
+      highlighter: {
+        show: true,
+        sizeAdjust: 12,
+      },
       cursor: { show: false },
       axes: {
-        xaxis: { max: 2012, tickInterval: 1 },
-        yaxis: { min: 0, tickInterval: 2 },
+        xaxis: {
+          min: @state.minYear - 1,
+          max: @state.maxYear,
+          tickInterval: yearTickInterval,
+          showTickMarks: false,
+          tickOptions: {
+            showGridline: false,
+            showMark: false,
+          },
+        },
+        yaxis: {
+          min: 0,
+          tickInterval: accidentTickInterval,
+          showTickMarks: false,
+          tickOptions: {
+            showMark: false,
+          },
+        },
       },
-      series: plotSeriesOptions
+      grid: {
+        gridLineColor: 'white',
+        background: '#f9f298',
+        shadow: false,
+        borderWidth: 0,
+      },
+      seriesDefaults: {
+        shadow: false,
+        markerOptions: {
+          size: 12,
+          shadow: false,
+        },
+      },
+      series: plotSeriesOptions,
+      legend: {
+        show: (@state.mode == 'both'),
+        location: 'sw',
+      },
     })
 
 class AccidentsMarkerRenderer
