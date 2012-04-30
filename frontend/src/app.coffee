@@ -443,7 +443,7 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
         $tbody.append($tr)
 
     $table.on 'dblclick', (e) ->
-      selectText($dataDiv[0])
+      selectText($table[0])
 
     $table
 
@@ -1000,7 +1000,7 @@ syncOriginDestinationMarkers = (state, map) ->
 showFusionTablesLayer = (state, map) ->
   fusionTableId = CITIES[state.city].fusionTableId
 
-  getOptions1 = () ->
+  getOptions = () ->
     {
       query: {
         select: 'Latitude',
@@ -1009,26 +1009,16 @@ showFusionTablesLayer = (state, map) ->
       },
       clickable: state.entireCity,
     }
-  # Google Fusion Tables has a bug today (2012-04-30). Setting heatmap at the
-  # same time as others gives "Undefined property '0'...".
-  # Workaround: we split up our setOptions() calls into two parts.
-  getOptions2 = () ->
-    {
-      heatmap: {
-        enabled: !state.entireCity,
-      },
-    }
 
-  layer = new google.maps.FusionTablesLayer($.extend(getOptions1(), getOptions2()))
-  layer.setMap(fusionTableId && map || null)
+  layer = new google.maps.FusionTablesLayer(getOptions())
+  layer.setMap(fusionTableId && state.entireCity && map || null)
 
   refresh = () ->
-    layer.setOptions(getOptions1())
-    window.setTimeout((() -> layer.setOptions(getOptions2())), 200)
+    layer.setMap(fusionTableId && state.entireCity && map || null)
+    layer.setOptions(getOptions())
 
   refreshFusionTableId = () ->
     fusionTableId = CITIES[state.city].fusionTableId
-    layer.setMap(fusionTableId && map || null)
     refresh()
 
   state.onChange('minYear', refresh)

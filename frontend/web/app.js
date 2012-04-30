@@ -608,7 +608,7 @@
         }
       }
       $table.on('dblclick', function(e) {
-        return selectText($dataDiv[0]);
+        return selectText($table[0]);
       });
       return $table;
     };
@@ -1338,9 +1338,9 @@
   };
 
   showFusionTablesLayer = function(state, map) {
-    var fusionTableId, getOptions1, getOptions2, layer, refresh, refreshFusionTableId;
+    var fusionTableId, getOptions, layer, refresh, refreshFusionTableId;
     fusionTableId = CITIES[state.city].fusionTableId;
-    getOptions1 = function() {
+    getOptions = function() {
       return {
         query: {
           select: 'Latitude',
@@ -1350,24 +1350,14 @@
         clickable: state.entireCity
       };
     };
-    getOptions2 = function() {
-      return {
-        heatmap: {
-          enabled: !state.entireCity
-        }
-      };
-    };
-    layer = new google.maps.FusionTablesLayer($.extend(getOptions1(), getOptions2()));
-    layer.setMap(fusionTableId && map || null);
+    layer = new google.maps.FusionTablesLayer(getOptions());
+    layer.setMap(fusionTableId && state.entireCity && map || null);
     refresh = function() {
-      layer.setOptions(getOptions1());
-      return window.setTimeout((function() {
-        return layer.setOptions(getOptions2());
-      }), 200);
+      layer.setMap(fusionTableId && state.entireCity && map || null);
+      return layer.setOptions(getOptions());
     };
     refreshFusionTableId = function() {
       fusionTableId = CITIES[state.city].fusionTableId;
-      layer.setMap(fusionTableId && map || null);
       return refresh();
     };
     state.onChange('minYear', refresh);

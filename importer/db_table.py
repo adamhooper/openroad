@@ -82,6 +82,14 @@ class DbTable:
         cursor.execute(sql, values)
         return cursor.fetchone()
 
+    def fetchAllRows(self):
+        sql = 'SELECT * FROM "%s" WHERE "Latitude" IS NOT NULL AND "Longitude" IS NOT NULL' % (self.schema.name,)
+        self.logger.info('Execute: %s' % (sql))
+
+        cursor = self.db.cursor()
+        cursor.execute(sql)
+        return cursor.fetchall()
+
     def _equalsExpression(self, column, value):
         sqlType = self.schemaRows[column].sqlType
 
