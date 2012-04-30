@@ -65,12 +65,12 @@
       <div id="worst-locations"></div>
     </div>
     <ul id="city">
-      <li class="first"><a class="vancouver" href="#vancouver">VAN</a></li>
-      <li><a class="calgary" href="#calgary">CGY</a></li>
-      <li class="selected"><a class="toronto" href="#toronto">TOR</a></li>
-      <li><a class="ottawa" href="#ottawa">OTT</a></li>
-      <li><a class="montreal" href="#montreal">MTL</a></li>
-      <li><a class="halifax" href="#halifax">HFX</a></li>
+      <li class="first"><a target="_parent" class="vancouver" href="http://vancouver.openfile.ca/openroad">VAN</a></li>
+      <li><a target="_parent" class="calgary" href="http://calgary.openfile.ca/openroad">CGY</a></li>
+      <li><a target="_parent" class="toronto" href="http://toronto.openfile.ca/openroad">TOR</a></li>
+      <li><a target="_parent" class="ottawa" href="http://ottawa.openfile.ca/openroad">OTT</a></li>
+      <li><a target="_parent" class="montreal" href="http://montreal.openfile.ca/openroad">MTL</a></li>
+      <li><a target="_parent" class="halifax" href="http://halifax.openfile.ca/openroad">HFX</a></li>
     </ul>
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.7&sensor=true&key=AIzaSyDWrbWJ46ET44B2Z0UFdqsT3DbsZXKXuqU"></script>
     <script type="text/javascript" src="jquery-1.7.1.min.js"></script>
@@ -92,7 +92,21 @@
       var bikeLayer = new google.maps.BicyclingLayer();
       bikeLayer.setMap(map);
 
-      var state = new State('toronto');
+      var city = 'toronto'; // a default, at random
+      if (window.location.search && window.location.search.length > 1) {
+        var parts = window.location.search.substring(1).split(/&/);
+        for (var i = 0; i < parts.length; i++) {
+          var match = /city=([a-z]+)/.exec(parts[i]);
+          if (match) {
+            city = match[1];
+            break;
+          }
+        }
+      }
+
+      $('ul#city a.' + city).addClass('selected');
+
+      var state = new State({ city: city });
 
       var chartLink = $('#details .chart a')[0];
       var dataLink = $('#details .data a')[0];
@@ -137,16 +151,6 @@
           $details.show();
           $citySelector.hide();
         }
-      });
-
-      $('#city a').click(function(e) {
-        e.preventDefault();
-        $a = $(e.target);
-        $li = $a.parent();
-        $ul = $li.parent();
-        $ul.find('li').removeClass('selected');
-        $li.addClass('selected');
-        state.setCity($a.attr('href').split(/\#/)[1])
       });
     </script>
   </body>

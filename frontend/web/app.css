@@ -337,7 +337,7 @@ ul#city a {
   color: white;
 }
 
-ul#city li.selected a {
+ul#city a.selected {
   color: #f9f298;
 }
 
