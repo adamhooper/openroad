@@ -1,6 +1,6 @@
 ../backend/wsgi_server.py /opt/bikefile/backend/wsgi_server.py
 ../frontend/web /opt/bikefile/frontend
-./files/bikefile-data.psql /opt/bikefile/bikefile-data.psql
+./bikefile-data.psql /opt/bikefile/bikefile-data.psql
 ./files/bikefile-init.sh /opt/bikefile/init.sh
 ./files/uwsgi.ini /opt/bikefile/backend/uwsgi.ini
 ./files/nginx-virtual.conf /etc/nginx/sites-available/bikefile

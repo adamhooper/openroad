@@ -33,6 +33,8 @@ exit 101
 EOF
 sudo chmod 755 "$MOUNT_DIR"/usr/sbin/policy-rc.d
 
+pg_dump -Fc -O -f "$MOUNT_DIR/opt/bikefile/bikefile-data.psql" bikefile
+
 cat "$FILELIST" | while read -a line; do
   orig=${line[0]}
   dest=${line[1]}
@@ -40,8 +42,6 @@ cat "$FILELIST" | while read -a line; do
   sudo cp -r "$orig" "$MOUNT_DIR""$dest"
   sudo chown -R root:root "$MOUNT_DIR""$dest"
 done
-
-pg_dump -Fc -O -f "$MOUNT_DIR/opt/bikefile/bikefile-data.psql" bikefile
 
 sudo chown -R 1000:1000 "$MOUNT_DIR"/opt/bikefile
 
