@@ -360,13 +360,13 @@ ul#city a.halifax {
   background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=44.615891,-63.614783);
 }
 
-div#data-dialog {
-  overflow: auto;
-}
-
 div#data-dialog table {
   border-collapse: collapse;
   border: none;
+}
+
+div#data-dialog td {
+  border-top: 1px solid #a1cde5;
 }
 
 div#data-dialog th, div#data-dialog td {
@@ -382,4 +382,96 @@ div#data-dialog td.id, div#data-dialog td.distance_along_path {
 
 div#data-dialog .address {
   display: none;
+}
+
+.ui-widget-overlay {
+  background: #666;
+}
+
+.ui-dialog {
+  padding: .5em 1em;
+}
+
+.ui-widget {
+  font-size: 1em;
+}
+
+.ui-widget-header {
+  border: none;
+  background: none;
+  color: #223b5d;
+  font-weight: normal;
+  height: 95px;
+}
+
+.ui-dialog .ui-dialog-titlebar {
+  padding: 0;
+}
+
+.ui-dialog .ui-dialog-title {
+  display: block;
+  float: none;
+  padding-left: 105px;
+  height: 95px;
+  font-size: 1.5em;
+  line-height: 95px;
+}
+
+.ui-dialog .ui-dialog-titlebar-close {
+  top: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  width: 5em;
+  color: #4d4d4d;
+  font-size: .75em;
+  text-align: right;
+  overflow: visible;
+}
+
+.ui-dialog .ui-dialog-titlebar-close {
+  text-decoration: none;
+}
+
+.ui-widget-header .ui-state-hover {
+  border: none;
+  background: none;
+  font-weight: normal;
+  text-decoration: underline;
+}
+
+.ui-dialog .ui-dialog-titlebar-close .ui-icon {
+  background: none;
+  width: auto;
+  height: auto;
+  text-indent: 0;
+  overflow: visible;
+}
+
+.ui-dialog .ui-dialog-titlebar-close span {
+  margin: 0;
+}
+
+.ui-dialog p.blurb {
+  margin: 0 0 .5em;
+  padding: 0;
+  font-size: .8em;
+  color: #4d4d4d;
+}
+
+.ui-dialog .ui-dialog-buttonpane {
+  padding: 0;
+}
+
+.ui-dialog .ui-dialog-buttonpane button {
+  margin: .5em 0 0;
+  font-size: .9em;
+}
+
+div.dialog-accident-data .ui-dialog-title {
+  background: url(./icons/dialog-accident-data.png) no-repeat left center;
+}
+
+div.dialog-accidents-by-year .ui-dialog-title {
+  background: url(./icons/dialog-accidents-by-year.png) no-repeat left center;
 }

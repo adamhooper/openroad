@@ -497,8 +497,8 @@
       $(link).on('click', function(e) {
         var $div;
         e.preventDefault();
-        $div = $('<div id="data-dialog"></div>');
-        $div.append(_this.renderTable());
+        $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. We\'ve hidden addresses to save space, but you\'ll see them if you copy this data and paste it somewhere else. The more ambitious among you may see and download <a href="https://github.com/adamhooper/openroad/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>');
+        $div.find('#data-dialog-inner').append(_this.renderTable());
         return $div.dialog({
           buttons: [
             {
@@ -509,6 +509,7 @@
               }
             }
           ],
+          dialogClass: 'dialog-accident-data',
           draggable: false,
           modal: true,
           resizable: false,
@@ -633,6 +634,7 @@
               }
             }
           ],
+          dialogClass: 'dialog-accidents-by-year',
           draggable: false,
           modal: true,
           resizable: false,
