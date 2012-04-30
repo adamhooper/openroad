@@ -92,7 +92,6 @@ form#mode label {
 }
 
 form#mode label.selected {
-  font-weight: bold;
   background: url(./icons/radio-mode-selected.png) no-repeat left center;
 }
 
