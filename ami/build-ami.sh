@@ -50,7 +50,7 @@ sudo chroot "$MOUNT_DIR" update-rc.d bikefile_uwsgi defaults 80 80
 sudo chroot "$MOUNT_DIR" /usr/bin/env `cat "$DIR"/locale` locale-gen en_US.UTF-8
 
 # Install packages
-sudo chroot "$MOUNT_DIR" apt-get install \
+sudo chroot "$MOUNT_DIR" env LANG="en_US.UTF-8" apt-get install \
   -y \
   postgresql-9.1-postgis \
   python-psycopg2 \
