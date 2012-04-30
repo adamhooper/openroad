@@ -21,6 +21,7 @@
       zoom: 12,
       minYear: 2006,
       maxYear: 2010,
+      fusionTableId: 3731863,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(49.131859, -123.264954), new google.maps.LatLng(49.352188, -122.985718))
     },
     calgary: {
@@ -29,6 +30,7 @@
       zoom: 12,
       minYear: 1996,
       maxYear: 2011,
+      fusionTableId: 3733170,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(50.842941, -114.613968), new google.maps.LatLng(51.343868, -113.901817))
     },
     toronto: {
@@ -37,6 +39,7 @@
       zoom: 13,
       minYear: 1986,
       maxYear: 2010,
+      fusionTableId: 3733171,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(43.584740, -79.639297), new google.maps.LatLng(43.855419, -79.115623))
     },
     ottawa: {
@@ -45,7 +48,7 @@
       zoom: 13,
       minYear: 2001,
       maxYear: 2010,
-      fusionTableId: 3723514,
+      fusionTableId: 3734609,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.962002, -76.355766), new google.maps.LatLng(45.536541, -75.246033))
     },
     montreal: {
@@ -54,6 +57,7 @@
       zoom: 13,
       minYear: 2006,
       maxYear: 2010,
+      fusionTableId: 3731866,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(45.413479, -73.976608), new google.maps.LatLng(45.704788, -73.476418))
     },
     halifax: {
@@ -62,6 +66,7 @@
       zoom: 13,
       minYear: 2007,
       maxYear: 2010,
+      fusionTableId: 3733175,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.434570, -64.237190), new google.maps.LatLng(45.276489, -62.160469))
     }
   };
