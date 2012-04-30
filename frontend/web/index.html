@@ -168,11 +168,11 @@
         $('form#origin a').click();
       });
 
-      state.onChange('routes', function(accidents) {
+      state.onChange('routes', function(routes) {
         var $citySelector = $('ul#city');
         var $legend = $('ul#legend');
         var $details = $('div#details');
-        if (accidents.bicycling === undefined && accidents.driving === undefined) {
+        if (routes.bicycling === undefined && routes.driving === undefined) {
           $legend.hide();
           $details.hide();
           $citySelector.show();
