@@ -376,6 +376,14 @@ div#data-dialog th, div#data-dialog td {
   font-size: .75em;
 }
 
+div#data-dialog table.with-highlights tbody tr {
+  display: none;
+}
+
+div#data-dialog table.with-highlights tbody tr.highlighted {
+  display: table-row;
+}
+
 div#data-dialog td.id, div#data-dialog td.distance_along_path {
   text-align: right;
 }

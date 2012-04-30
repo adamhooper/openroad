@@ -80,6 +80,13 @@ CITIES = {
 WORST_ACCIDENT_RADIUS = 7 # metres.
 # Two accidents can be double this apart and count as one location.
 
+
+# Monkey-patch MarkerClusterer to stay above DirectionsRenderer
+originalClusterIconCreateCss = ClusterIcon.prototype.createCss
+ClusterIcon.prototype.createCss = (pos) ->
+  style = originalClusterIconCreateCss.call(this, pos)
+  "#{style} z-index: 2000;"
+
 selectText = (element) ->
   if document.body.createTextRange?
     range = document.body.createTextRange()
@@ -357,27 +364,10 @@ class ChartSeriesMaker
   getSeries: () ->
     ([ +k, v ] for k, v of @data)
 
-class AccidentsTableRenderer
-  constructor: (@state, link) ->
-    $(link).on 'click', (e) =>
-      e.preventDefault()
-      $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. We\'ve hidden addresses to save space, but you\'ll see them if you copy this data and paste it somewhere else. The more ambitious among you may see and download <a href="https://github.com/adamhooper/openroad/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>')
-      $div.find('#data-dialog-inner').append(this.renderTable())
-      $div.dialog({
-        buttons: [ { text: 'Close', click: () -> $(this).dialog('destroy'); $div.remove() } ],
-        dialogClass: 'dialog-accident-data',
-        draggable: false,
-        modal: true,
-        resizable: false,
-        position: 'center',
-        title: 'Detailed accident reports',
-        width: $(window).width() * 0.9,
-        height: $(window).height() * 0.9,
-      })
-
-  renderTable: () ->
+show_accidents_dialog = (@state, onlyIds=undefined) ->
+  render_table = () ->
     accidents = []
-    for mode, modeAccidents of @state.accidents
+    for mode, modeAccidents of state.accidents
       accidents = accidents.concat(modeAccidents)
 
     return unless accidents.length > 0
@@ -392,7 +382,7 @@ class AccidentsTableRenderer
       continue if heading == 'Time'
 
       # We can't give Google-provided geocoded data (all cities but Toronto)
-      if @state.city != 'Toronto'
+      if state.city != 'Toronto'
         continue if heading == 'Latitude'
         continue if heading == 'Longitude'
 
@@ -415,10 +405,11 @@ class AccidentsTableRenderer
     $tbody = $table.find('tbody')
     trClass = 'odd'
 
-    for mode, modeAccidents of @state.accidents
+    for mode, modeAccidents of state.accidents
       for accident in modeAccidents
         $tr = $("<tr class=\"#{mode}\">" + ['<td></td>' for key in keys].join('') + '</tr>')
         $tr.attr('class', trClass)
+        $tr.attr('class', "accident-#{accident.id}")
         $tr.attr('id', "accident-#{mode}-#{accident.id}")
         $tds = $tr.children()
 
@@ -438,6 +429,44 @@ class AccidentsTableRenderer
       selectText($dataDiv[0])
 
     $table
+
+  $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. We\'ve hidden addresses to save space, but you\'ll see them if you copy this data and paste it somewhere else. The more ambitious among you may see and download <a href="https://github.com/adamhooper/openroad/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>')
+  $div.find('#data-dialog-inner').append(render_table())
+
+  if onlyIds? && onlyIds.length > 0
+    $div.find('table').addClass('with-highlights')
+    for id in onlyIds
+      $tr = $div.find("tr.accident-#{id}")
+      $tr.addClass('highlighted')
+      $tr.show()
+
+    theseAre = onlyIds.length == 1 && 'This is' || 'These are'
+    accidents = onlyIds.length == 1 && 'accident' || 'accidents'
+
+    $p = $("<p>#{theseAre} just the #{accidents} you clicked. You may also see <a href=\"#\">all accidents along your route</a>.</p>")
+    $div.append($p)
+    $p.find('a').on 'click', (e) ->
+      e.preventDefault()
+      $div.find('table').removeClass('with-highlights')
+      $p.remove()
+
+  $div.dialog({
+    buttons: [ { text: 'Close', click: () -> $(this).dialog('destroy'); $div.remove() } ],
+    dialogClass: 'dialog-accident-data',
+    draggable: false,
+    modal: true,
+    resizable: false,
+    position: 'center',
+    title: 'Detailed accident reports',
+    width: $(window).width() * 0.9,
+    height: $(window).height() * 0.9,
+  })
+
+class AccidentsTableRenderer
+  constructor: (@state, link) ->
+    $(link).on 'click', (e) =>
+      e.preventDefault()
+      show_accidents_dialog(@state)
 
 class TrendChartRenderer
   constructor: (@state, link) ->
@@ -550,6 +579,9 @@ class AccidentsMarkerRenderer
 
     @state.onChange('accidents', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
+
+    google.maps.event.addListener @clusterer, 'click', (cluster) =>
+      show_accidents_dialog(@state, ( marker.accidentUniqueKey for marker in cluster.getMarkers() ))
 
   _createClusterer: () ->
     iconStyles = []

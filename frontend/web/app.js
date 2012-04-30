@@ -1,5 +1,5 @@
 (function() {
-  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, selectText, syncOriginDestinationMarkers, _address_form_abort_clicking_on_map,
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, originalClusterIconCreateCss, selectText, show_accidents_dialog, syncOriginDestinationMarkers, _address_form_abort_clicking_on_map,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   URL = 'http://localhost:8000/%{city}';
@@ -66,6 +66,14 @@
   };
 
   WORST_ACCIDENT_RADIUS = 7;
+
+  originalClusterIconCreateCss = ClusterIcon.prototype.createCss;
+
+  ClusterIcon.prototype.createCss = function(pos) {
+    var style;
+    style = originalClusterIconCreateCss.call(this, pos);
+    return "" + style + " z-index: 2000;";
+  };
 
   selectText = function(element) {
     var range, selection;
@@ -489,42 +497,14 @@
 
   })();
 
-  AccidentsTableRenderer = (function() {
-
-    function AccidentsTableRenderer(state, link) {
-      var _this = this;
-      this.state = state;
-      $(link).on('click', function(e) {
-        var $div;
-        e.preventDefault();
-        $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. We\'ve hidden addresses to save space, but you\'ll see them if you copy this data and paste it somewhere else. The more ambitious among you may see and download <a href="https://github.com/adamhooper/openroad/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>');
-        $div.find('#data-dialog-inner').append(_this.renderTable());
-        return $div.dialog({
-          buttons: [
-            {
-              text: 'Close',
-              click: function() {
-                $(this).dialog('destroy');
-                return $div.remove();
-              }
-            }
-          ],
-          dialogClass: 'dialog-accident-data',
-          draggable: false,
-          modal: true,
-          resizable: false,
-          position: 'center',
-          title: 'Detailed accident reports',
-          width: $(window).width() * 0.9,
-          height: $(window).height() * 0.9
-        });
-      });
-    }
-
-    AccidentsTableRenderer.prototype.renderTable = function() {
+  show_accidents_dialog = function(state, onlyIds) {
+    var $div, $p, $tr, accidents, id, render_table, theseAre, _i, _len;
+    this.state = state;
+    if (onlyIds == null) onlyIds = void 0;
+    render_table = function() {
       var $table, $tbody, $tds, $th, $theadTr, $tr, accident, accidents, heading, headings, i, key, keys, mode, modeAccidents, text, textNode, trClass, value, _i, _len, _len2, _len3, _ref, _ref2, _ref3;
       accidents = [];
-      _ref = this.state.accidents;
+      _ref = state.accidents;
       for (mode in _ref) {
         modeAccidents = _ref[mode];
         accidents = accidents.concat(modeAccidents);
@@ -538,7 +518,7 @@
         if (heading === 'id') continue;
         if (heading === 'distance_along_path') continue;
         if (heading === 'Time') continue;
-        if (this.state.city !== 'Toronto') {
+        if (state.city !== 'Toronto') {
           if (heading === 'Latitude') continue;
           if (heading === 'Longitude') continue;
         }
@@ -567,7 +547,7 @@
       }
       $tbody = $table.find('tbody');
       trClass = 'odd';
-      _ref3 = this.state.accidents;
+      _ref3 = state.accidents;
       for (mode in _ref3) {
         modeAccidents = _ref3[mode];
         for (_i = 0, _len2 = modeAccidents.length; _i < _len2; _i++) {
@@ -584,6 +564,7 @@
             })()
           ].join('') + '</tr>');
           $tr.attr('class', trClass);
+          $tr.attr('class', "accident-" + accident.id);
           $tr.attr('id', "accident-" + mode + "-" + accident.id);
           $tds = $tr.children();
           if (trClass === 'odd') {
@@ -610,6 +591,57 @@
       });
       return $table;
     };
+    $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. We\'ve hidden addresses to save space, but you\'ll see them if you copy this data and paste it somewhere else. The more ambitious among you may see and download <a href="https://github.com/adamhooper/openroad/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>');
+    $div.find('#data-dialog-inner').append(render_table());
+    if ((onlyIds != null) && onlyIds.length > 0) {
+      $div.find('table').addClass('with-highlights');
+      for (_i = 0, _len = onlyIds.length; _i < _len; _i++) {
+        id = onlyIds[_i];
+        $tr = $div.find("tr.accident-" + id);
+        $tr.addClass('highlighted');
+        $tr.show();
+      }
+      theseAre = onlyIds.length === 1 && 'This is' || 'These are';
+      accidents = onlyIds.length === 1 && 'accident' || 'accidents';
+      $p = $("<p>" + theseAre + " just the " + accidents + " you clicked. You may also see <a href=\"#\">all accidents along your route</a>.</p>");
+      $div.append($p);
+      $p.find('a').on('click', function(e) {
+        e.preventDefault();
+        $div.find('table').removeClass('with-highlights');
+        return $p.remove();
+      });
+    }
+    return $div.dialog({
+      buttons: [
+        {
+          text: 'Close',
+          click: function() {
+            $(this).dialog('destroy');
+            return $div.remove();
+          }
+        }
+      ],
+      dialogClass: 'dialog-accident-data',
+      draggable: false,
+      modal: true,
+      resizable: false,
+      position: 'center',
+      title: 'Detailed accident reports',
+      width: $(window).width() * 0.9,
+      height: $(window).height() * 0.9
+    });
+  };
+
+  AccidentsTableRenderer = (function() {
+
+    function AccidentsTableRenderer(state, link) {
+      var _this = this;
+      this.state = state;
+      $(link).on('click', function(e) {
+        e.preventDefault();
+        return show_accidents_dialog(_this.state);
+      });
+    }
 
     return AccidentsTableRenderer;
 
@@ -759,6 +791,19 @@
       });
       this.state.onChange('mode', function() {
         return _this.refresh();
+      });
+      google.maps.event.addListener(this.clusterer, 'click', function(cluster) {
+        var marker;
+        return show_accidents_dialog(_this.state, (function() {
+          var _i, _len, _ref, _results;
+          _ref = cluster.getMarkers();
+          _results = [];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            marker = _ref[_i];
+            _results.push(marker.accidentUniqueKey);
+          }
+          return _results;
+        })());
       });
     }
 
