@@ -96,6 +96,7 @@ form#mode label.selected {
 }
 
 a#reset {
+  color: #223b5d;
   text-align: center;
   text-decoration: none;
   font-size: .8em;
