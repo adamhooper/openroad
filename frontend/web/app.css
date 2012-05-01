@@ -13,12 +13,12 @@ div.forms {
   position: relative;
 }
 
-div.origin-destination, form#mode {
+div.origin-destination, div.mode-reset {
   color: #223b5d;
   margin-bottom: .25em;
 }
 
-div.origin-destination h2, form#mode h2 {
+div.origin-destination h2, div.mode-reset h2 {
   font-weight: normal;
   font-size: 1.2em;
   margin: 0;
@@ -72,7 +72,7 @@ form.origin-destination a.clicking {
   color: #a1cde5;
 }
 
-form#mode {
+div.mode-reset {
   position: absolute;
   right: 0;
   top: 0;
@@ -85,7 +85,7 @@ form#mode input {
 
 form#mode label {
   padding-left: 22px;
-  min-height: 18px;
+  height: 1.8em;
   margin-left: .5em;
   cursor: pointer;
   background: url(./icons/radio-mode.png) no-repeat left center;
@@ -93,6 +93,17 @@ form#mode label {
 
 form#mode label.selected {
   background: url(./icons/radio-mode-selected.png) no-repeat left center;
+}
+
+a#reset {
+  text-align: center;
+  text-decoration: none;
+  font-size: .8em;
+  line-height: 2.25em;
+}
+
+a#reset:hover {
+  text-decoration: underline;
 }
 
 div#map {

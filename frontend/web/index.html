@@ -26,14 +26,17 @@
           <a href="#">or choose from map</a>
         </form>
       </div>
-      <form id="mode">
-        <h2>How do you get around?</h2>
-        <div class="options">
-          <label class="bicycling selected"><input type="radio" name="mode" value="bicycling" checked="checked" />bike</label>
-          <label class="driving"><input type="radio" name="mode" value="driving" />car</label>
-          <label class="both"><input type="radio" name="mode" value="both" />both</label>
-        </div>
-      </form>
+      <div class="mode-reset">
+        <form id="mode">
+          <h2>How do you get around?</h2>
+          <div class="options">
+            <label class="bicycling selected"><input type="radio" name="mode" value="bicycling" checked="checked" />bike</label>
+            <label class="driving"><input type="radio" name="mode" value="driving" />car</label>
+            <label class="both"><input type="radio" name="mode" value="both" />both</label>
+          </div>
+        </form>
+        <a id="reset" style="display: none;" href="#">Set a new route</a>
+      </div>
     </div>
     <div id="map"></div>
     <ul id="legend" style="display:none;">
@@ -115,24 +118,19 @@
       var manager = new Manager(map, state, chartLink, dataLink, worstLocationsDiv);
 
       $('form#mode').mode_form(state);
-      $('form#origin input[type=text]').focus();
+
       $('form#origin').address_form('origin', state, map, function() {
-        $('form#origin input[type=text]').blur();
-        var $input = $('form#destination input[type=text]');
-        if (!$input.val()) {
-          $input.focus();
-          $('form#destination a').click();
-        }
+        state.setSelectingOriginOrDestination(state.destination ? undefined : 'destination');
       });
       $('form#destination').address_form('destination', state, map, function() {
-        $('form#destination input[type=text]').blur();
+        state.setSelectingOriginOrDestination(undefined);
+        $('form#mode input:eq(0)').focus();
       });
-
       $('form#origin input, form#destination input').on('focus', function(e) {
         state.setEntireCity(false);
       });
       $('div.year div.slider').year_range_slider(state);
-      $('form#origin a').click();
+      $('form#origin input[type=text]').focus();
 
       $('div#details div.entire-city a').on('click', function(e) {
         e.preventDefault();
@@ -141,6 +139,12 @@
         } else {
           state.setEntireCity(true);
         }
+      });
+
+      $('a#reset').on('click', function(e) {
+        state.setOrigin(undefined);
+        state.setDestination(undefined);
+        state.setSelectingOriginOrDestination('origin');
       });
 
       var entireCityLinkText = $('div#details div.entire-city a').text();
@@ -168,20 +172,35 @@
         $('form#origin a').click();
       });
 
-      state.onChange('routes', function(routes) {
+      var stuffShouldBeVisible = false;
+
+      var resetWhatsVisible = function() {
+        var newStuffShouldBeVisible = !(state.routes.bicycling === undefined && state.routes.driving === undefined);
+        if (newStuffShouldBeVisible == stuffShouldBeVisible) return;
+        stuffShouldBeVisible = newStuffShouldBeVisible;
+
         var $citySelector = $('ul#city');
         var $legend = $('ul#legend');
         var $details = $('div#details');
-        if (routes.bicycling === undefined && routes.driving === undefined) {
-          $legend.hide();
-          $details.hide();
-          $citySelector.show();
+        var $reset = $('a#reset');
+
+        if (stuffShouldBeVisible) {
+          $legend.slideDown();
+          $details.slideDown();
+          $citySelector.slideUp();
+          $reset.fadeIn();
         } else {
-          $legend.show();
-          $details.show();
-          $citySelector.hide();
+          $legend.slideUp();
+          $details.slideUp();
+          $citySelector.slideDown();
+          $reset.fadeOut();
         }
-      });
+      };
+
+      state.onChange('routes', resetWhatsVisible);
+      $.fx.off = true;
+      resetWhatsVisible();
+      $.fx.off = false;
     </script>
   </body>
 </html>

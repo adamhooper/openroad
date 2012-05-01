@@ -118,6 +118,7 @@ class State
     @listeners = {}
     @frozen = {}
     @entireCity = false
+    @selectingOriginOrDestination = undefined
     # @routes is always set before @accidents
 
   onChange: (key, callback) ->
@@ -229,6 +230,11 @@ class State
     return if entireCity == @entireCity
     @entireCity = entireCity
     this._changed('entireCity', @entireCity)
+
+  setSelectingOriginOrDestination: (selectingOriginOrDestination) ->
+    return if selectingOriginOrDestination == @selectingOriginOrDestination
+    @selectingOriginOrDestination = selectingOriginOrDestination
+    this._changed('selectingOriginOrDestination', @selectingOriginOrDestination)
 
 window.State = State
 
@@ -1045,8 +1051,6 @@ class Manager
 
 window.Manager = Manager
 
-_address_form_abort_clicking_on_map = undefined # only one clicking at a time
-
 $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
   property = originOrDestination
   setByGeocoder = false
@@ -1060,6 +1064,12 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
   $status = $form.find('.status')
   lastAddressTyped = $input.val()
   geocoder = new google.maps.Geocoder()
+  mapListener = undefined
+
+  abortClickingOnMap = () ->
+    if mapListener?
+      google.maps.event.removeListener(mapListener)
+      mapListener = undefined
 
   getCityBounds = () ->
     CITIES[state.city].bounds
@@ -1080,7 +1090,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
 
   maybeLookupAddress = () ->
     addressTyped = $input.val()
-    return if addressTyped == lastAddressTyped
+    return false if addressTyped == lastAddressTyped
 
     if $.trim(addressTyped || '').length > 0
       setError(undefined)
@@ -1092,6 +1102,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       }, (results, status) ->
         handleGeocoderResult(results, status)
       )
+    return true
 
   handleGeocoderResult = (results, status) ->
     setByGeocoder = true
@@ -1135,36 +1146,47 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     $input.val(lastAddressTyped)
 
   onTypeAddress = (e) ->
-    e.preventDefault()
-    _address_form_abort_clicking_on_map?()
-    _address_form_abort_clicking_on_map = undefined
-    maybeLookupAddress()
+    if state.selectingOriginOrDestination == originOrDestination
+      e.preventDefault()
+      maybeLookupAddress() || state.setSelectingOriginOrDestination(undefined)
 
+  $input.on('focus', () -> state.setSelectingOriginOrDestination(originOrDestination))
   $form.on('submit', onTypeAddress)
   $input.on('blur', onTypeAddress)
-
   $a.on 'click', (e) ->
     e.preventDefault()
-    _address_form_abort_clicking_on_map?()
-    _address_form_abort_clicking_on_map = undefined
+    state.setSelectingOriginOrDestination(state.selectingOriginOrDestination != originOrDestination && originOrDestination || undefined)
 
-    if $a.hasClass('clicking')
-      $a.removeClass('clicking')
-      return
+  state.onChange 'selectingOriginOrDestination', (newOriginOrDestination) ->
+    abortClickingOnMap()
 
-    mapListener = google.maps.event.addListenerOnce map, 'click', (e) ->
-      _address_form_abort_clicking_on_map()
-      set(e.latLng)
-      callback?()
-      true
+    if originOrDestination == newOriginOrDestination
+      $input.focus()
 
-    _address_form_abort_clicking_on_map = () ->
-      google.maps.event.removeListener(mapListener)
-      $a.text(aText)
-      $a.removeClass('clicking')
+      mapListener = google.maps.event.addListenerOnce map, 'click', (e) ->
+        set(e.latLng)
+        callback?()
+        true
+    else
+      $input.blur()
 
-    $a.text("click #{aPointString} on the map")
-    $a.addClass('clicking')
+    changeA = () ->
+      if newOriginOrDestination == originOrDestination
+        $a.addClass('clicking')
+        $a.text("click #{aPointString} on the map")
+      else
+        $a.removeClass('clicking')
+        $a.text(aText)
+
+    shouldBeVisible = (newOriginOrDestination == originOrDestination || (!newOriginOrDestination? && !state[originOrDestination]?))
+
+    if !shouldBeVisible && $a.is(':visible')
+      $a.fadeOut(changeA)
+    else
+      changeA()
+
+    if shouldBeVisible && !$a.is(':visible')
+      $a.fadeIn()
 
   state.onChange originOrDestination, (position) ->
     return if setByGeocoder

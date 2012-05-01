@@ -1,5 +1,5 @@
 (function() {
-  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, originalClusterIconCreateCss, selectText, showFusionTablesLayer, show_accidents_dialog, syncOriginDestinationMarkers, _address_form_abort_clicking_on_map,
+  var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, originalClusterIconCreateCss, selectText, showFusionTablesLayer, show_accidents_dialog, syncOriginDestinationMarkers,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   URL = 'http://localhost:8000/%{city}';
@@ -111,6 +111,7 @@
       this.listeners = {};
       this.frozen = {};
       this.entireCity = false;
+      this.selectingOriginOrDestination = void 0;
     }
 
     State.prototype.onChange = function(key, callback) {
@@ -247,6 +248,14 @@
       if (entireCity === this.entireCity) return;
       this.entireCity = entireCity;
       return this._changed('entireCity', this.entireCity);
+    };
+
+    State.prototype.setSelectingOriginOrDestination = function(selectingOriginOrDestination) {
+      if (selectingOriginOrDestination === this.selectingOriginOrDestination) {
+        return;
+      }
+      this.selectingOriginOrDestination = selectingOriginOrDestination;
+      return this._changed('selectingOriginOrDestination', this.selectingOriginOrDestination);
     };
 
     return State;
@@ -1387,10 +1396,8 @@
 
   window.Manager = Manager;
 
-  _address_form_abort_clicking_on_map = void 0;
-
   $.fn.address_form = function(originOrDestination, state, map, callback) {
-    var $a, $error, $form, $input, $status, aPointString, aText, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, maybeLookupAddress, onTypeAddress, property, set, setByGeocoder, setError, setStatus, setter;
+    var $a, $error, $form, $input, $status, aPointString, aText, abortClickingOnMap, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, mapListener, maybeLookupAddress, onTypeAddress, property, set, setByGeocoder, setError, setStatus, setter;
     if (callback == null) callback = void 0;
     property = originOrDestination;
     setByGeocoder = false;
@@ -1404,6 +1411,13 @@
     $status = $form.find('.status');
     lastAddressTyped = $input.val();
     geocoder = new google.maps.Geocoder();
+    mapListener = void 0;
+    abortClickingOnMap = function() {
+      if (mapListener != null) {
+        google.maps.event.removeListener(mapListener);
+        return mapListener = void 0;
+      }
+    };
     getCityBounds = function() {
       return CITIES[state.city].bounds;
     };
@@ -1424,18 +1438,19 @@
     maybeLookupAddress = function() {
       var addressTyped;
       addressTyped = $input.val();
-      if (addressTyped === lastAddressTyped) return;
+      if (addressTyped === lastAddressTyped) return false;
       if ($.trim(addressTyped || '').length > 0) {
         setError(void 0);
         setStatus('Looking up address');
         lastAddressTyped = addressTyped;
-        return geocoder.geocode({
+        geocoder.geocode({
           'address': addressTyped,
           'bounds': getCityBounds()
         }, function(results, status) {
           return handleGeocoderResult(results, status);
         });
       }
+      return true;
     };
     handleGeocoderResult = function(results, status) {
       setByGeocoder = true;
@@ -1480,39 +1495,49 @@
       return $input.val(lastAddressTyped);
     };
     onTypeAddress = function(e) {
-      e.preventDefault();
-      if (typeof _address_form_abort_clicking_on_map === "function") {
-        _address_form_abort_clicking_on_map();
+      if (state.selectingOriginOrDestination === originOrDestination) {
+        e.preventDefault();
+        return maybeLookupAddress() || state.setSelectingOriginOrDestination(void 0);
       }
-      _address_form_abort_clicking_on_map = void 0;
-      return maybeLookupAddress();
     };
+    $input.on('focus', function() {
+      return state.setSelectingOriginOrDestination(originOrDestination);
+    });
     $form.on('submit', onTypeAddress);
     $input.on('blur', onTypeAddress);
     $a.on('click', function(e) {
-      var mapListener;
       e.preventDefault();
-      if (typeof _address_form_abort_clicking_on_map === "function") {
-        _address_form_abort_clicking_on_map();
+      return state.setSelectingOriginOrDestination(state.selectingOriginOrDestination !== originOrDestination && originOrDestination || void 0);
+    });
+    state.onChange('selectingOriginOrDestination', function(newOriginOrDestination) {
+      var changeA, shouldBeVisible;
+      abortClickingOnMap();
+      if (originOrDestination === newOriginOrDestination) {
+        $input.focus();
+        mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
+          set(e.latLng);
+          if (typeof callback === "function") callback();
+          return true;
+        });
+      } else {
+        $input.blur();
       }
-      _address_form_abort_clicking_on_map = void 0;
-      if ($a.hasClass('clicking')) {
-        $a.removeClass('clicking');
-        return;
-      }
-      mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
-        _address_form_abort_clicking_on_map();
-        set(e.latLng);
-        if (typeof callback === "function") callback();
-        return true;
-      });
-      _address_form_abort_clicking_on_map = function() {
-        google.maps.event.removeListener(mapListener);
-        $a.text(aText);
-        return $a.removeClass('clicking');
+      changeA = function() {
+        if (newOriginOrDestination === originOrDestination) {
+          $a.addClass('clicking');
+          return $a.text("click " + aPointString + " on the map");
+        } else {
+          $a.removeClass('clicking');
+          return $a.text(aText);
+        }
       };
-      $a.text("click " + aPointString + " on the map");
-      return $a.addClass('clicking');
+      shouldBeVisible = newOriginOrDestination === originOrDestination || (!(newOriginOrDestination != null) && !(state[originOrDestination] != null));
+      if (!shouldBeVisible && $a.is(':visible')) {
+        $a.fadeOut(changeA);
+      } else {
+        changeA();
+      }
+      if (shouldBeVisible && !$a.is(':visible')) return $a.fadeIn();
     });
     return state.onChange(originOrDestination, function(position) {
       if (setByGeocoder) return;
