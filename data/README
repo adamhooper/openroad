@@ -1,4 +1,39 @@
+= Data files
+
 Here's how we accessed data for all these files
+
+vancouver.csv: Vancouver bicycle accidents.
+  Years: 2006 to 2010
+  Source: Vancouver Police Department
+  License: Public domain
+  Edits:
+    - merged deaths and accidents into single spreadsheet with "fatal" column
+    - changed Jul 26 to Jul 28 for 2006 accident at Clark/Grandview
+
+calgary.csv: Calgary bicycle accidents.
+  Years: 1996 to 2011
+  Source: Calgary Police Department
+  License: Public domain
+  Edits:
+    - formatted into prettier text
+    - Replaced strings like "On RICHMOND RD SW between SARCEE TR SW & 51 S" with
+      strings like "RICHMOND RD SW at SARCEE TR SW", for Google's geocoder
+
+ottawa.csv: Ottawa bicycle accidents.
+  Years: 1999 to 2010 (details only in 2006-2010)
+  Source: Ottawa Police Service & City of Ottawa
+  License: Public domain
+  Edits:
+    - Transcribed details from paper copy for 2006-2010
+
+toronto.csv: Toronto bicycle accidents.
+  Years: 1986 to 2010
+  Source:
+  License: Public domain
+  Edits:
+    - removed many columns
+    - removed rows with malformed dates and integers
+    - set time-of-day on rows with malformed times to 00:00
 
 halifax.csv: Nova Scotia bicycle accidents.
   Years: 2006 to 2010
@@ -64,28 +99,31 @@ halifax.csv: Nova Scotia bicycle accidents.
       (2) Subsection (1) does not apply to a motor vehicle registered as an 
       antique vehicle. 2008, c. 62, s. 2.
 
-toronto.csv: Toronto bicycle accidents.
-  Years: 1986 to 2010
-  Source:
-  License: Public domain
-  Edits:
-    - removed many columns
-    - removed rows with malformed dates and integers
-    - set time-of-day on rows with malformed times to 00:00
+= Finding latitudes and longitudes.
 
-vancouver.csv: Vancouver bicycle accidents.
-  Years: 2006 to 2010
-  Source: Vancouver Police Department
-  License: Public domain
-  Edits:
-    - merged deaths and accidents into single spreadsheet with "fatal" column
-    - changed Jul 26 to Jul 28 for 2006 accident at Clark/Grandview
+Use the script `../importer/importer.py` to import each CSV file. To import
+them all, run `../importer/import-all.sh`.
 
-calgary.csv: Calgary bicycle accidents.
-  Years: 1996 to 2011
-  Source: Calgary Police Department
-  License: public domain
-  Edits:
-    - formatted into prettier text
-    - Replaced strings like "On RICHMOND RD SW between SARCEE TR SW & 51 S" with
-      strings like "RICHMOND RD SW at SARCEE TR SW", for Google's geocoder
+Google's terms of service forbid us from redistributing latitudes and
+longitudes in any city except Toronto (where our initial dataset included
+latitudes and longitudes). That's why you can't download them.
+
+The importer can only geocode a certain number of accidents per day: a Google
+geocoder limit. Just wait 24 hours and re-start it.
+
+= Corrections
+
+We used Google's geocoder to find locations based on the addresses here.
+Sometimes, Google would return the wrong location. We tried to detect every
+error, then offer a correction: another address Google would be able to
+geocode correctly. These are in the `CITY-geocoding-errors.txt` files. Each
+line looks like "bad address--good address".
+
+After geocoding, we ran `../importer/geocoder_take2.py` on each of the
+`CITY-geocoding-errors.txt` files to correct the latitudes and longitudes.
+Where an address made no sense, we positioned it at (0, 0).
+
+= Google Fusion Tables
+
+After all this is done, we need CSV files to upload to Google Spreadsheets.
+Run `../importer/exporter-all.sh` to export a CSV per city.
