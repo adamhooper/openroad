@@ -75,6 +75,41 @@
       <li><a target="_parent" class="montreal" href="http://montreal.openfile.ca/openroad">MTL</a></li>
       <li><a target="_parent" class="halifax" href="http://halifax.openfile.ca/openroad">HFX</a></li>
     </ul>
+    <div id="text">
+      <div class="chart">
+        <p class="title">Number of reported bike/car accidents in <span class="city"></span></p>
+        <img alt="" src="" width="427" height="337" />
+      </div>
+      <p>
+      Do you bicycle to work through harrowing traffic? Or are you driving
+      alongside dangerous cyclists?
+      </p>
+      <p>
+      Every year in Canada, thousands of cyclists and drivers collide. We've
+      crammed every accident report we could find into this map. Pick a path
+      and we'll show you every accident we know along it--within the years
+      you specify.
+      </p>
+      <p>
+      This map only shows the accidents which have been reported to police
+      (or, in Halifax's case, to the provincial insurance provider). That
+      means it doesn't count the delirium of dings in everyday rush hour.
+      Also, most of our data comes in the form of intersections, not exact
+      locations.
+      </p>
+      <p>
+      Play around, and you might notice that lots of accidents occur along
+      designated bike routes. That's normal: there are many more cyclists
+      along bike routes, so there are more accidents. A route with more
+      accidents isn't necessarily more dangerous for each individual on it.
+      </p>
+      <p>
+      It's a dangerous road for cyclists, and it's no safer for drivers. Be careful.
+      </p>
+      <p class="credit">
+      Reported by Adam Hooper.
+      </p>
+    </div>
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.7&sensor=true&key=AIzaSyDWrbWJ46ET44B2Z0UFdqsT3DbsZXKXuqU"></script>
     <script type="text/javascript" src="jquery-1.7.1.min.js"></script>
     <script type="text/javascript" src="jquery-ui-1.8.19.custom.min.js"></script>
@@ -108,6 +143,8 @@
       }
 
       $('ul#city a.' + city).addClass('selected');
+      $('div#text span.city').text(city.substring(0, 1).toUpperCase() + city.substring(1));
+      $('div#text img').attr('src', './charts/' + city + '.png');
 
       var state = new State({ city: city });
 
