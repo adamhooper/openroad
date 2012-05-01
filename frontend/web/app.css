@@ -58,7 +58,7 @@ form.origin-destination input.text {
   background: #f9f298;
   padding-left: 5px;
   padding-right: 5px;
-  width: 25em;
+  width: 32em;
 }
 
 form.origin-destination label.hint {
@@ -94,11 +94,20 @@ form#mode label.selected {
 }
 
 a#reset {
-  color: #223b5d;
+  position: absolute;
+  display: block;
+  background: url(./icons/button-reset.png) no-repeat center center;
+  color: white;
+  width: 113px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  line-height: 36px;
   text-align: center;
   text-decoration: none;
-  font-size: .8em;
-  line-height: 2.25em;
+  top: 2.1em;
+  left: -113px;
+  margin-left: -1.8em;
 }
 
 a#reset:hover {

@@ -35,7 +35,7 @@
             <label class="both"><input type="radio" name="mode" value="both" />both</label>
           </div>
         </form>
-        <a id="reset" style="display: none;" href="#">Set a new route</a>
+        <a id="reset" style="display: none;" href="#">Reset route</a>
       </div>
     </div>
     <div id="map"></div>
@@ -122,7 +122,6 @@
       $('form#origin').address_form('origin', state, map, function() {
         if (state.destination) {
           state.setSelectingOriginOrDestination(undefined);
-          console.log("BLUR");
           $('form#mode input:first').parent().focus();
         } else {
           state.setSelectingOriginOrDestination('destination');
@@ -131,7 +130,6 @@
       $('form#destination').address_form('destination', state, map, function() {
         if (state.origin) {
           state.setSelectingOriginOrDestination(undefined);
-          console.log("BLUR");
           $('form#mode input:first').parent().focus();
         } else {
           state.setSelectingOriginOrDestination('origin');
@@ -156,6 +154,19 @@
         state.setOrigin(undefined);
         state.setDestination(undefined);
         state.setSelectingOriginOrDestination('origin');
+      });
+      var resetShouldBeVisible = false;
+      state.onChange('selectingOriginOrDestination', function(originOrDestination) {
+        var newResetShouldBeVisible = (!originOrDestination && state.origin && state.destination);
+        if (newResetShouldBeVisible != resetShouldBeVisible) {
+          var $reset = $('a#reset');
+          resetShouldBeVisible = newResetShouldBeVisible;
+          if (resetShouldBeVisible) {
+            $reset.fadeIn();
+          } else {
+            $reset.fadeOut();
+          }
+        }
       });
 
       var entireCityLinkText = $('div#details div.entire-city a').text();
@@ -199,12 +210,10 @@
           $legend.slideDown();
           $details.slideDown();
           $citySelector.slideUp();
-          $reset.fadeIn();
         } else {
           $legend.slideUp();
           $details.slideUp();
           $citySelector.slideDown();
-          $reset.fadeOut();
         }
       };
 
