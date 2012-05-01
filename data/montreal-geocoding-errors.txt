@@ -1,0 +1,45 @@
+20 CENTR COMM , Montreal, Canada--20 CENTRE COMM , Montreal, Canada
+245 CARRE BENOIT , Montreal, Canada--245 BENOIT, Montreal, Canada
+8605 BOURG JOLY , Montreal, Canada--DELETE
+CANARDIERE & BUREAU, Montreal, Canada--CANARDIERE & BOURGET, Montreal, Canada
+COUSENS & BRABANT MARTINEAU, Montreal, Canada--COUSENS & BRABANT MARINEAU, Montreal, Canada
+D'ARCS & D'ALLET, Montreal, Canada--d'ars & d'allet, Montreal, Canada
+DES SOURCES & CARDINAL, Montreal, Canada--45.45009,-73.78024
+DOLLARD & CORONER, Montreal, Canada--DELETE
+ERNEST & BASSIN, Montreal, Canada--Ernest & Baffin, Dollard-des-Ormeaux, Communauté-Urbaine-de-Montréal, Québec, Canada
+HUDSON & BARCLAY, Montreal, Canada--Ch HUDSON & Ave BARCLAY, Montreal, Canada
+LASALLE & BUTTER, Montreal, Canada--LASALLE & BEATTY, Montreal, Canada
+LOUIS COLLIN & EDOUARD MONTPETIT, Montreal, Canada--ch de la rampe & EDOUARD-MONTPETIT, Montreal, Canada
+MARCLEIN WILSON & ACADIE, Montreal, Canada--MARCELIN WILSON & ACADIE, Montreal, Canada
+MILLS & DE LA COMMUNE, Montreal, Canada--Rue de la Commune & mill, Montreal, Canada
+MILLS & DES MOULINS, Montreal, Canada--mill & riverside, montreal, canada
+MONT JOLI & AUCOIN, Montreal, Canada--Mont joli & audoin, montreal, canada
+MOREAU & LA FONTAINE, Montreal, Canada--DELETE
+PIERREFONDS TERR PRIVE & BOIS DES TROTTIER, Montreal, Canada--DELETE
+PLACE CURRATEAU & DE BOUCHERVILLE, Montreal, Canada--rue de boucherville et rue curatteau, montreal, canada
+PLAMONDON & LEMIEUX, Montreal, Canada--plamondon & lemieux, montreal, canada
+PLETCHER & NOTRE DAME, Montreal, Canada--fletcher & notre dame, montreal, canada
+PONT DE CE & BOUDRIERE, Montreal, Canada--Avenue des Ponts de Cé & Avenue Baudrière, Anjou, Communauté-Urbaine-de-Montréal, Québec H1J, Canada
+PONT JACQUES CARTIER & ILE STE HELENE, Montreal, Canada--45.520349, -73.53503
+RACHEL & FRANCHERE, Montreal, Canada--rachel & fullum, montreal, canada
+REDDING & BUTTER, Montreal, Canada--DELETE
+RENE LEVESQUE & ANDERSON, Montreal, Canada--rue anderson & rene-levesque, montreal, canada
+RENE LEVESQUE & CATHEDRALE, Montreal, Canada--cathedrale & rene-levesque, montreal, canada
+RENE LEVESQUE & ILE DES SOEURS, Montreal, Canada--DELETE
+ROCHON & DUTRISAC, Montreal, Canada--rochon & dutrisac, montreal, canada
+ROSEMONT & PAPINEAU, Montreal, Canada--ROSEMONT & PAPINEAU, Montreal, Canada
+ROYALMOUNT & DECARIE, Montreal, Canada--45.49876, -73.66075
+SHERBROOKE & CHERRIER, Montreal, Canada--45.523309, -73.565383
+SHERBROOKE & COTE ST ANTOINE, Montreal, Canada--sherbrooke & hampton, Montreal, Canada
+SHERBROOKE & DU FORT, Montreal, Canada--45.493585, -73.58443
+SHERBROOKE & GEORGE IV, Montreal, Canada--sherbrooke & ave georges v, Montreal, Canada
+SHERBROOKE & GRAY, Montreal, Canada--sherbrooke & grey ave, montreal, canada
+STANSFIELD & RENE LEVESQUE, Montreal, Canada--DELETE
+ST DENIS & CARRE ST LOUIS, Montreal, Canada--st denis & square st louis, montreal, canada
+ST DENIS & GAUTHIER, Montreal, Canada--DELETE
+STE EMILIE & BOURGET, Montreal, Canada--Rue Sainte Émilie & Rue Bourget, Montreal, Canada
+ST GERMAIN & LAFONTAINE, Montreal, Canada--DELETE
+STIE B N & O, Montreal, Canada--DELETE
+TASSE & ROCHON, Montreal, Canada--DELETE
+TRANSCANADIENNE & TECUMSEH, Montreal, Canada--45.47244, -73.8099
+YVES PREVOST & CHENILLE, Montreal, Canada--45.59639, -73.55017

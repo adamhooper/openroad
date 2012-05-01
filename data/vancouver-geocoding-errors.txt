@@ -1,0 +1,20 @@
+AGRONOMY RD at  , Vancouver, BC, Canada--DELETE
+ARTHUR LAING BRIDGE at  , Vancouver, BC, Canada--DELETE
+BEACH AVE at  , Vancouver, BC, Canada--DELETE
+CARRALL ST at  , Vancouver, BC, Canada--DELETE
+CHANCELLOR BLVD at  , Vancouver, BC, Canada--DELETE
+CORNWALL AVE at  , Vancouver, BC, Canada--DELETE
+DUKE ST at  , Vancouver, BC, Canada--DELETE
+E HASTINGS ST ONRAMP at  , Vancouver, BC, Canada--DELETE
+GRANVILLE ST BRIDGE at W 4TH AVE OFFRAMP, Vancouver, BC, Canada--49.26790,-123.13837
+HEMLOCK ST at  , Vancouver, BC, Canada--DELETE
+LIONS GATE BRIDGE at  , Vancouver, BC, Canada--DELETE
+LIONS GATE BRIDGE at  , Vancouver, BC, Canada--DELETE
+MACDONALD ST at  , Vancouver, BC, Canada--DELETE
+MCGILL ST ONRAMP at HWY 1, Vancouver, BC, Canada--49.28781, -123.03587
+PEARKES LANE at  , Vancouver, BC, Canada--DELETE
+STANLEY PARK DR at  , Vancouver, BC, Canada--DELETE
+STANLEY PARK DR at  , Vancouver, BC, Canada--DELETE
+W 16TH AVE at WESBROOK MALL, Vancouver, BC, Canada--49.25575, -123.23638
+WATER ST at  , Vancouver, BC, Canada--DELETE
+WESBROOK MALL at FAIRVIEW AVE, Vancouver, BC, Canada--49.26289, -123.24250
