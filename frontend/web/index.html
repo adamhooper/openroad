@@ -241,16 +241,18 @@
         var $citySelector = $('ul#city');
         var $legend = $('ul#legend');
         var $details = $('div#details');
-        var $reset = $('a#reset');
+        var $text = $('div#text');
 
         if (stuffShouldBeVisible) {
           $legend.slideDown();
           $details.slideDown();
           $citySelector.slideUp();
+          $text.slideUp();
         } else {
           $legend.slideUp();
           $details.slideUp();
           $citySelector.slideDown();
+          $text.slideDown();
         }
       };
 
