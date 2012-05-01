@@ -233,6 +233,8 @@ class State
 
   setSelectingOriginOrDestination: (selectingOriginOrDestination) ->
     return if selectingOriginOrDestination == @selectingOriginOrDestination
+    return if !selectingOriginOrDestination? && @selectingOriginOrDestination == 'origin' && !@origin?
+    return if !selectingOriginOrDestination? && @selectingOriginOrDestination == 'destination' && !@destination?
     @selectingOriginOrDestination = selectingOriginOrDestination
     this._changed('selectingOriginOrDestination', @selectingOriginOrDestination)
 
@@ -983,8 +985,12 @@ syncOriginDestinationMarkers = (state, map) ->
       title: (key == 'origin' && 'Start point' || 'End point'),
     })
     google.maps.event.addListener markers[key], 'dragstart', () ->
+      state.freeze('origin')
+      state.freeze('destination')
       state.freeze('routes')
     google.maps.event.addListener markers[key], 'dragend', () ->
+      state.thaw('origin')
+      state.thaw('destination')
       state.thaw('routes')
 
   google.maps.event.addListener markers.origin, 'position_changed', () ->
@@ -1057,19 +1063,13 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
   setter = originOrDestination == 'origin' && 'setOrigin' || 'setDestination'
   aPointString = originOrDestination == 'origin' && 'a start point' || 'an end point'
   $form = $(this)
-  $a = $form.find('a')
-  aText = $a.text()
+  $hint = $form.find('label.hint')
   $input = $form.find('input[type=text]')
   $error = $form.find('.error')
   $status = $form.find('.status')
   lastAddressTyped = $input.val()
   geocoder = new google.maps.Geocoder()
   mapListener = undefined
-
-  abortClickingOnMap = () ->
-    if mapListener?
-      google.maps.event.removeListener(mapListener)
-      mapListener = undefined
 
   getCityBounds = () ->
     CITIES[state.city].bounds
@@ -1145,48 +1145,37 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       lastAddressTyped = '(point on map)'
     $input.val(lastAddressTyped)
 
-  onTypeAddress = (e) ->
-    if state.selectingOriginOrDestination == originOrDestination
-      e.preventDefault()
-      maybeLookupAddress() || state.setSelectingOriginOrDestination(undefined)
+  onTypeAddress = () ->
+    maybeLookupAddress() || state.setSelectingOriginOrDestination(undefined)
 
   $input.on('focus', () -> state.setSelectingOriginOrDestination(originOrDestination))
-  $form.on('submit', onTypeAddress)
-  $input.on('blur', onTypeAddress)
-  $a.on 'click', (e) ->
+  $form.on 'submit', (e) ->
     e.preventDefault()
-    state.setSelectingOriginOrDestination(state.selectingOriginOrDestination != originOrDestination && originOrDestination || undefined)
+    onTypeAddress() && false
+  $input.on 'blur', () ->
+    onTypeAddress() || true
+
+  abortClickingOnMap = () ->
+    return if !mapListener?
+    $input.blur()
+    $hint.fadeOut()
+    google.maps.event.removeListener(mapListener)
+    mapListener = undefined
 
   state.onChange 'selectingOriginOrDestination', (newOriginOrDestination) ->
     abortClickingOnMap()
 
     if originOrDestination == newOriginOrDestination
       $input.focus()
+      $hint.fadeIn()
 
       mapListener = google.maps.event.addListenerOnce map, 'click', (e) ->
+        mapListener = undefined
         set(e.latLng)
+        $hint.fadeOut()
+        $input.blur()
         callback?()
         true
-    else
-      $input.blur()
-
-    changeA = () ->
-      if newOriginOrDestination == originOrDestination
-        $a.addClass('clicking')
-        $a.text("click #{aPointString} on the map")
-      else
-        $a.removeClass('clicking')
-        $a.text(aText)
-
-    shouldBeVisible = (newOriginOrDestination == originOrDestination || (!newOriginOrDestination? && !state[originOrDestination]?))
-
-    if !shouldBeVisible && $a.is(':visible')
-      $a.fadeOut(changeA)
-    else
-      changeA()
-
-    if shouldBeVisible && !$a.is(':visible')
-      $a.fadeIn()
 
   state.onChange originOrDestination, (position) ->
     return if setByGeocoder

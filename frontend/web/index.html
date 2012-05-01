@@ -10,20 +10,20 @@
   <body>
     <div class="forms">
       <div class="origin-destination">
-        <h2>Set your route <span class="explanation">(click a start and end point on the map, or type addresses here)</span></h2>
+        <h2>Set your route</h2>
         <form id="origin" class="origin-destination">
           <label for="origin-text">Start</label>
           <input class="text" id="origin-text" type="text" placeholder="example: 99 1st Ave" />
           <div class="status" style="display: none;"></div>
           <div class="error" style="display: none;"></div>
-          <a href="#">or choose from map</a>
+          <label class="hint" for="origin-text" style="display:none;">or click a start point on the map</label>
         </form>
         <form id="destination" class="origin-destination">
           <label for="destination-text">Finish</label>
           <input class="text" id="destination-text" type="text" placeholder="example: 12 2nd St" />
           <div class="status" style="display: none;"></div>
           <div class="error" style="display: none;"></div>
-          <a href="#">or choose from map</a>
+          <label class="hint" for="destination-text" style="display:none;">or click an end point on the map</label>
         </form>
       </div>
       <div class="mode-reset">
@@ -120,17 +120,28 @@
       $('form#mode').mode_form(state);
 
       $('form#origin').address_form('origin', state, map, function() {
-        state.setSelectingOriginOrDestination(state.destination ? undefined : 'destination');
+        if (state.destination) {
+          state.setSelectingOriginOrDestination(undefined);
+          console.log("BLUR");
+          $('form#mode input:first').parent().focus();
+        } else {
+          state.setSelectingOriginOrDestination('destination');
+        }
       });
       $('form#destination').address_form('destination', state, map, function() {
-        state.setSelectingOriginOrDestination(undefined);
-        $('form#mode input:eq(0)').focus();
+        if (state.origin) {
+          state.setSelectingOriginOrDestination(undefined);
+          console.log("BLUR");
+          $('form#mode input:first').parent().focus();
+        } else {
+          state.setSelectingOriginOrDestination('origin');
+        }
       });
       $('form#origin input, form#destination input').on('focus', function(e) {
         state.setEntireCity(false);
       });
       $('div.year div.slider').year_range_slider(state);
-      $('form#origin input[type=text]').focus();
+      state.setSelectingOriginOrDestination('origin');
 
       $('div#details div.entire-city a').on('click', function(e) {
         e.preventDefault();

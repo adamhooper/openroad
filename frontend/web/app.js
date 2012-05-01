@@ -254,6 +254,12 @@
       if (selectingOriginOrDestination === this.selectingOriginOrDestination) {
         return;
       }
+      if (!(selectingOriginOrDestination != null) && this.selectingOriginOrDestination === 'origin' && !(this.origin != null)) {
+        return;
+      }
+      if (!(selectingOriginOrDestination != null) && this.selectingOriginOrDestination === 'destination' && !(this.destination != null)) {
+        return;
+      }
       this.selectingOriginOrDestination = selectingOriginOrDestination;
       return this._changed('selectingOriginOrDestination', this.selectingOriginOrDestination);
     };
@@ -1317,9 +1323,13 @@
         title: key === 'origin' && 'Start point' || 'End point'
       });
       google.maps.event.addListener(markers[key], 'dragstart', function() {
+        state.freeze('origin');
+        state.freeze('destination');
         return state.freeze('routes');
       });
       google.maps.event.addListener(markers[key], 'dragend', function() {
+        state.thaw('origin');
+        state.thaw('destination');
         return state.thaw('routes');
       });
     }
@@ -1397,27 +1407,20 @@
   window.Manager = Manager;
 
   $.fn.address_form = function(originOrDestination, state, map, callback) {
-    var $a, $error, $form, $input, $status, aPointString, aText, abortClickingOnMap, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, mapListener, maybeLookupAddress, onTypeAddress, property, set, setByGeocoder, setError, setStatus, setter;
+    var $error, $form, $hint, $input, $status, aPointString, abortClickingOnMap, geocoder, get, getCityBounds, handleGeocoderResult, handleReverseGeocoderResult, lastAddressTyped, lookupLatLng, mapListener, maybeLookupAddress, onTypeAddress, property, set, setByGeocoder, setError, setStatus, setter;
     if (callback == null) callback = void 0;
     property = originOrDestination;
     setByGeocoder = false;
     setter = originOrDestination === 'origin' && 'setOrigin' || 'setDestination';
     aPointString = originOrDestination === 'origin' && 'a start point' || 'an end point';
     $form = $(this);
-    $a = $form.find('a');
-    aText = $a.text();
+    $hint = $form.find('label.hint');
     $input = $form.find('input[type=text]');
     $error = $form.find('.error');
     $status = $form.find('.status');
     lastAddressTyped = $input.val();
     geocoder = new google.maps.Geocoder();
     mapListener = void 0;
-    abortClickingOnMap = function() {
-      if (mapListener != null) {
-        google.maps.event.removeListener(mapListener);
-        return mapListener = void 0;
-      }
-    };
     getCityBounds = function() {
       return CITIES[state.city].bounds;
     };
@@ -1494,50 +1497,40 @@
       }
       return $input.val(lastAddressTyped);
     };
-    onTypeAddress = function(e) {
-      if (state.selectingOriginOrDestination === originOrDestination) {
-        e.preventDefault();
-        return maybeLookupAddress() || state.setSelectingOriginOrDestination(void 0);
-      }
+    onTypeAddress = function() {
+      return maybeLookupAddress() || state.setSelectingOriginOrDestination(void 0);
     };
     $input.on('focus', function() {
       return state.setSelectingOriginOrDestination(originOrDestination);
     });
-    $form.on('submit', onTypeAddress);
-    $input.on('blur', onTypeAddress);
-    $a.on('click', function(e) {
+    $form.on('submit', function(e) {
       e.preventDefault();
-      return state.setSelectingOriginOrDestination(state.selectingOriginOrDestination !== originOrDestination && originOrDestination || void 0);
+      return onTypeAddress() && false;
     });
+    $input.on('blur', function() {
+      return onTypeAddress() || true;
+    });
+    abortClickingOnMap = function() {
+      if (!(mapListener != null)) return;
+      $input.blur();
+      $hint.fadeOut();
+      google.maps.event.removeListener(mapListener);
+      return mapListener = void 0;
+    };
     state.onChange('selectingOriginOrDestination', function(newOriginOrDestination) {
-      var changeA, shouldBeVisible;
       abortClickingOnMap();
       if (originOrDestination === newOriginOrDestination) {
         $input.focus();
-        mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
+        $hint.fadeIn();
+        return mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
+          mapListener = void 0;
           set(e.latLng);
+          $hint.fadeOut();
+          $input.blur();
           if (typeof callback === "function") callback();
           return true;
         });
-      } else {
-        $input.blur();
       }
-      changeA = function() {
-        if (newOriginOrDestination === originOrDestination) {
-          $a.addClass('clicking');
-          return $a.text("click " + aPointString + " on the map");
-        } else {
-          $a.removeClass('clicking');
-          return $a.text(aText);
-        }
-      };
-      shouldBeVisible = newOriginOrDestination === originOrDestination || (!(newOriginOrDestination != null) && !(state[originOrDestination] != null));
-      if (!shouldBeVisible && $a.is(':visible')) {
-        $a.fadeOut(changeA);
-      } else {
-        changeA();
-      }
-      if (shouldBeVisible && !$a.is(':visible')) return $a.fadeIn();
     });
     return state.onChange(originOrDestination, function(position) {
       if (setByGeocoder) return;

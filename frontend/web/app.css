@@ -61,15 +61,13 @@ form.origin-destination input.text {
   width: 25em;
 }
 
-form.origin-destination a {
+form.origin-destination label.hint {
+  float: none;
+  width: auto;
   text-decoration: none;
-  color: #223b5d;
+  color: #a1cde5;
   font-size: .8em;
   line-height: 1.25;
-}
-
-form.origin-destination a.clicking {
-  color: #a1cde5;
 }
 
 div.mode-reset {
