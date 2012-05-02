@@ -1080,7 +1080,7 @@
         }
       }
       topSpots.sort(function(a, b) {
-        return b.length - a.length;
+        return b.accidents.length - a.accidents.length;
       });
       topSpots = topSpots.slice(0, 3);
       for (_m = 0, _len5 = topSpots.length; _m < _len5; _m++) {

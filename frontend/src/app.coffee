@@ -791,7 +791,7 @@ class WorstLocationsRenderer
             idToSpot[accident.id] = topSpot
             topSpot.accidents.push(accident)
 
-    topSpots.sort((a, b) -> b.length - a.length)
+    topSpots.sort((a, b) -> b.accidents.length - a.accidents.length)
 
     topSpots = topSpots.slice(0, 3)
 
