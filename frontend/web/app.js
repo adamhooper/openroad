@@ -46,7 +46,7 @@
       latitude: 45.4214,
       longitude: -75.6919,
       zoom: 13,
-      minYear: 2001,
+      minYear: 1999,
       maxYear: 2010,
       fusionTableId: 3734609,
       bounds: new google.maps.LatLngBounds(new google.maps.LatLng(44.962002, -76.355766), new google.maps.LatLng(45.536541, -75.246033))
