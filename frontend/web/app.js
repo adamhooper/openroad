@@ -1158,7 +1158,7 @@
       window.setTimeout(function() {
         var $img, url;
         $img = $html.find('img');
-        url = "http://maps.googleapis.com/maps/api/streetview?sensor=false&size=" + ($img.width()) + "x" + ($img.height()) + "&location=" + topSpot.Latitude + "," + topSpot.Longitude;
+        url = "http://maps.googleapis.com/maps/api/streetview?sensor=false&size=" + ($img.width()) + "x" + (Math.round($img.width() * 9 / 16)) + "&location=" + topSpot.Latitude + "," + topSpot.Longitude;
         return $img.attr('src', url);
       }, 50);
       return $html;

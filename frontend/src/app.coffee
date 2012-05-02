@@ -850,7 +850,7 @@ class WorstLocationsRenderer
     # Wait for the image to be drawn so we know its height
     window.setTimeout(() ->
       $img = $html.find('img')
-      url = "http://maps.googleapis.com/maps/api/streetview?sensor=false&size=#{$img.width()}x#{$img.height()}&location=#{topSpot.Latitude},#{topSpot.Longitude}"
+      url = "http://maps.googleapis.com/maps/api/streetview?sensor=false&size=#{$img.width()}x#{Math.round($img.width()*9/16)}&location=#{topSpot.Latitude},#{topSpot.Longitude}"
       $img.attr('src', url)
     , 50)
 
