@@ -66,7 +66,7 @@ def simplify_line(points):
     v1 = len(points)
     ret = douglas_peucker_step(points, error_in_degrees2)
     v2 = len(ret)
-    print("Before: %d; after: %d; error: %f" % (v1, v2, error_in_degrees2))
+    #print("Before: %d; after: %d; error: %f" % (v1, v2, error_in_degrees2))
     return ret
 
 def _decode_line(encoded):
@@ -192,7 +192,7 @@ def application(env, start_response):
                RANGE_IN_M,
                min_datetime, max_datetime)
 
-    print(q)
+    #print(q)
 
     db = psycopg2.connect(DSN)
     c = db.cursor(cursor_factory=_RealDictCursor)
