@@ -135,6 +135,7 @@ ul#legend {
 
 ul#legend li {
   display: inline-block;
+  *display: inline;
   font-size: .8em;
   height: 33px;
   vertical-align: middle;
@@ -143,6 +144,7 @@ ul#legend li {
 
 ul#legend img, ul#legend span {
   display: inline-block;
+  *display: inline;
   vertical-align: middle;
   padding-right: .2em;
 }
