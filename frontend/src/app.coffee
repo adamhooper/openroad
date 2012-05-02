@@ -543,6 +543,12 @@ class TrendChartRenderer
 
     innerId = $div.children('div').attr('id')
 
+    if $.browser.msie && $.browser.version < '7'
+      $("##{innerId}").css({
+        position: 'relative',
+        height: 200
+      })
+
     # No more than 10 ticks horizontally
     yearTickInterval = Math.floor((@state.maxYear - @state.minYear + 1) / 10) + 1
 

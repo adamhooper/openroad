@@ -756,6 +756,12 @@
         });
       }
       innerId = $div.children('div').attr('id');
+      if ($.browser.msie && $.browser.version < '7') {
+        $("#" + innerId).css({
+          position: 'relative',
+          height: 200
+        });
+      }
       yearTickInterval = Math.floor((this.state.maxYear - this.state.minYear + 1) / 10) + 1;
       accidentTickInterval = Math.floor(maxAccidents / 10) + 1;
       return $.jqplot(innerId, plotSeries, {
