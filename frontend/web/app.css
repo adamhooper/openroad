@@ -154,6 +154,7 @@ div#details {
   position: relative;
   color: #223b5d;
   padding-top: 5.5em;
+  height: 12em; /* IE7- doesn't show it otherwise */
 }
 
 div#details h2 {
@@ -327,7 +328,7 @@ div#worst-locations img {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  bottom: 0;
 }
 
 ul#city {
