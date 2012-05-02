@@ -393,6 +393,7 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
   render_table = () ->
     accidents = []
     for mode, modeAccidents of state.accidents
+      continue unless mode == state.mode || state.mode == 'both'
       accidents = accidents.concat(modeAccidents)
 
     return unless accidents.length > 0
@@ -431,6 +432,7 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
     trClass = 'odd'
 
     for mode, modeAccidents of state.accidents
+      continue unless mode == state.mode || state.mode == 'both'
       for accident in modeAccidents
         $tr = $("<tr class=\"#{mode}\">" + ('<td></td>' for key in keys).join('') + '</tr>')
         $tr.attr('class', trClass)
@@ -523,6 +525,7 @@ class TrendChartRenderer
   renderChartInChartContainer: ($div) ->
     series = {}
     for mode, accidents of @state.accidents
+      continue unless mode == @state.mode || @state.mode == 'both'
       seriesMaker = new ChartSeriesMaker()
       for accident in accidents
         seriesMaker.add(accident.Time.split(/-/)[0]) # year

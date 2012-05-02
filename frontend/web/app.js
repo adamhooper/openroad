@@ -543,6 +543,7 @@
       _ref = state.accidents;
       for (mode in _ref) {
         modeAccidents = _ref[mode];
+        if (!(mode === state.mode || state.mode === 'both')) continue;
         accidents = accidents.concat(modeAccidents);
       }
       if (!(accidents.length > 0)) return;
@@ -586,6 +587,7 @@
       _ref3 = state.accidents;
       for (mode in _ref3) {
         modeAccidents = _ref3[mode];
+        if (!(mode === state.mode || state.mode === 'both')) continue;
         for (_i = 0, _len2 = modeAccidents.length; _i < _len2; _i++) {
           accident = modeAccidents[_i];
           $tr = $(("<tr class=\"" + mode + "\">") + ((function() {
@@ -729,6 +731,7 @@
       _ref = this.state.accidents;
       for (mode in _ref) {
         accidents = _ref[mode];
+        if (!(mode === this.state.mode || this.state.mode === 'both')) continue;
         seriesMaker = new ChartSeriesMaker();
         for (_i = 0, _len = accidents.length; _i < _len; _i++) {
           accident = accidents[_i];
