@@ -588,17 +588,15 @@
         modeAccidents = _ref3[mode];
         for (_i = 0, _len2 = modeAccidents.length; _i < _len2; _i++) {
           accident = modeAccidents[_i];
-          $tr = $(("<tr class=\"" + mode + "\">") + [
-            (function() {
-              var _j, _len3, _results;
-              _results = [];
-              for (_j = 0, _len3 = keys.length; _j < _len3; _j++) {
-                key = keys[_j];
-                _results.push('<td></td>');
-              }
-              return _results;
-            })()
-          ].join('') + '</tr>');
+          $tr = $(("<tr class=\"" + mode + "\">") + ((function() {
+            var _j, _len3, _results;
+            _results = [];
+            for (_j = 0, _len3 = keys.length; _j < _len3; _j++) {
+              key = keys[_j];
+              _results.push('<td></td>');
+            }
+            return _results;
+          })()).join('') + '</tr>');
           $tr.attr('class', trClass);
           $tr.attr('class', "accident-" + accident.id);
           $tr.attr('id', "accident-" + mode + "-" + accident.id);
@@ -627,7 +625,7 @@
       });
       return $table;
     };
-    $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. We\'ve hidden addresses to save space, but you\'ll see them if you copy this data and paste it somewhere else. The more ambitious among you may see and download <a target="_blank" href="https://github.com/adamhooper/openroad/tree/master/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>');
+    $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. The more ambitious among you may see and download <a target="_blank" href="https://github.com/adamhooper/openroad/tree/master/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>');
     $div.find('#data-dialog-inner').append(render_table());
     if ((onlyIds != null) && onlyIds.length > 0) {
       $div.find('table').addClass('with-highlights');

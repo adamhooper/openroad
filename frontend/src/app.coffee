@@ -432,7 +432,7 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
 
     for mode, modeAccidents of state.accidents
       for accident in modeAccidents
-        $tr = $("<tr class=\"#{mode}\">" + ['<td></td>' for key in keys].join('') + '</tr>')
+        $tr = $("<tr class=\"#{mode}\">" + ('<td></td>' for key in keys).join('') + '</tr>')
         $tr.attr('class', trClass)
         $tr.attr('class', "accident-#{accident.id}")
         $tr.attr('id', "accident-#{mode}-#{accident.id}")
@@ -450,12 +450,11 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
 
         $tbody.append($tr)
 
-    $table.on 'dblclick', (e) ->
-      selectText($table[0])
+    $table.on('dblclick', (e) -> selectText($table[0]))
 
     $table
 
-  $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. We\'ve hidden addresses to save space, but you\'ll see them if you copy this data and paste it somewhere else. The more ambitious among you may see and download <a target="_blank" href="https://github.com/adamhooper/openroad/tree/master/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>')
+  $div = $('<div id="data-dialog"><p class="blurb">Data geeks, this is for you. Here is our raw data: every detail we know about the accidents you found. The more ambitious among you may see and download <a target="_blank" href="https://github.com/adamhooper/openroad/tree/master/data">our entire datasets</a>, too.</p><div id="data-dialog-inner"></div></div>')
   $div.find('#data-dialog-inner').append(render_table())
 
   if onlyIds? && onlyIds.length > 0

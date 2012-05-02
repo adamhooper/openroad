@@ -412,13 +412,6 @@ div#data-dialog td.id, div#data-dialog td.distance_along_path {
   text-align: right;
 }
 
-div#data-dialog .address {
-  width: 1px;
-  overflow: hidden;
-  padding: 0;
-  color: white;
-}
-
 .ui-widget-overlay {
   background: #666;
 }
