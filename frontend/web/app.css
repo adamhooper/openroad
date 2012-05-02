@@ -4,6 +4,7 @@ html, body {
   margin: 0 auto;
   padding: 0;
   font-size: 20px; /* makes math easy */
+  overflow: hidden; /* only makes sense in an iframe ... which we are in. */
 }
 
 * {
