@@ -60,7 +60,7 @@ form.origin-destination input.text {
   background: #f9f298;
   padding-left: 5px;
   padding-right: 5px;
-  width: 32em;
+  width: 30em;
 }
 
 form.origin-destination label.hint {
@@ -534,13 +534,14 @@ div#text div.chart {
 }
 
 div#text p {
-  font-size: .85em;
-  margin: .4em 0;
-  text-justify: left;
+  font-size: .83em;
+  margin: .4em .4em 0 0;
+  text-align: justify;
 }
 
 div#text p.credit {
   font-size: 1em;
+  margin-bottom: 0;
 }
 
 div#text div.chart p {
