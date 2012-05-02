@@ -1184,6 +1184,10 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     lookupLatLng(position)
 
 $.fn.mode_form = (state) ->
+  # IE doesn't check hidden radios
+  $(this).find('label').on 'click', (e) ->
+    $(e.target).find('input').attr('checked', 'checked')
+
   $.each this, () ->
     $form = $(this)
 

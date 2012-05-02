@@ -1541,6 +1541,9 @@
   };
 
   $.fn.mode_form = function(state) {
+    $(this).find('label').on('click', function(e) {
+      return $(e.target).find('input').attr('checked', 'checked');
+    });
     return $.each(this, function() {
       var $form;
       $form = $(this);
