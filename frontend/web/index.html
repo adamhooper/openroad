@@ -11,16 +11,16 @@
     <div class="forms">
       <div class="origin-destination">
         <h2>Set your route</h2>
-        <form id="origin" class="origin-destination">
+        <form id="origin" class="origin-destination" autocomplete="off">
           <label for="origin-text">Start</label>
-          <input class="text" id="origin-text" type="text" placeholder="example: 99 1st Ave" autocomplete="off" />
+          <input class="text" id="origin-text" type="text" name="origin" placeholder="example: 99 1st Ave" autocomplete="off" />
           <div class="status" style="display: none;"></div>
           <div class="error" style="display: none;"></div>
           <label class="hint" for="origin-text" style="display:none;">or click a start point on the map</label>
         </form>
-        <form id="destination" class="origin-destination">
+        <form id="destination" class="origin-destination" autocomplete="off">
           <label for="destination-text">Finish</label>
-          <input class="text" id="destination-text" type="text" placeholder="example: 12 2nd St" autocomplete="off" />
+          <input class="text" id="destination-text" type="text" name="destination" placeholder="example: 12 2nd St" autocomplete="off" />
           <div class="status" style="display: none;"></div>
           <div class="error" style="display: none;"></div>
           <label class="hint" for="destination-text" style="display:none;">or click an end point on the map</label>
@@ -119,147 +119,159 @@
     <script type="text/javascript" src="markerclusterer.js"></script>
     <script type="text/javascript" src="app.js" charset="utf-8"></script>
     <script type="text/javascript">
-      var mapDiv = document.getElementById('map');
-      var map = new google.maps.Map(mapDiv, {
-        mapTypeId: google.maps.MapTypeId.ROADMAP,
-        center: new google.maps.LatLng(0, 0),
-        zoom: 1,
-        mapTypeControl: false
-      });
+      $(function() {
+        $('input[autocomplete=off]').val('');
 
-      var bikeLayer = new google.maps.BicyclingLayer();
-      bikeLayer.setMap(map);
+        var mapDiv = document.getElementById('map');
+        var map = new google.maps.Map(mapDiv, {
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+          center: new google.maps.LatLng(0, 0),
+          zoom: 1,
+          mapTypeControl: false
+        });
 
-      var city = 'toronto'; // a default, at random
-      if (window.location.search && window.location.search.length > 1) {
-        var parts = window.location.search.substring(1).split(/&/);
-        for (var i = 0; i < parts.length; i++) {
-          var match = /city=([a-z]+)/.exec(parts[i]);
-          if (match) {
-            city = match[1];
-            break;
+        var bikeLayer = new google.maps.BicyclingLayer();
+        bikeLayer.setMap(map);
+
+        var city = 'toronto'; // a default, at random
+        if (window.location.search && window.location.search.length > 1) {
+          var parts = window.location.search.substring(1).split(/&/);
+          for (var i = 0; i < parts.length; i++) {
+            var match = /city=([a-z]+)/.exec(parts[i]);
+            if (match) {
+              city = match[1];
+              break;
+            }
           }
         }
-      }
 
-      $('ul#city a.' + city).addClass('selected');
-      $('div#text span.city').text(city.substring(0, 1).toUpperCase() + city.substring(1));
-      $('div#text img').attr('src', './charts/' + city + '.png');
+        $('ul#city a.' + city).addClass('selected');
+        $('div#text span.city').text(city.substring(0, 1).toUpperCase() + city.substring(1));
+        $('div#text img').attr('src', './charts/' + city + '.png');
 
-      var state = new State({ city: city });
+        var state = new State({ city: city });
 
-      var chartLink = $('#details .chart a')[0];
-      var dataLink = $('#details .data a')[0];
-      var worstLocationsDiv = document.getElementById('worst-locations');
+        var chartLink = $('#details .chart a')[0];
+        var dataLink = $('#details .data a')[0];
+        var worstLocationsDiv = document.getElementById('worst-locations');
 
-      var manager = new Manager(map, state, chartLink, dataLink, worstLocationsDiv);
+        var manager = new Manager(map, state, chartLink, dataLink, worstLocationsDiv);
 
-      $('form#mode').mode_form(state);
+        $('form#mode').mode_form(state);
 
-      $('form#origin').address_form('origin', state, map, function() {
-        if (state.destination) {
-          state.setSelectingOriginOrDestination(undefined);
-          $('form#mode input:first').parent().focus();
-        } else {
-          state.setSelectingOriginOrDestination('destination');
-        }
-      });
-      $('form#destination').address_form('destination', state, map, function() {
-        if (state.origin) {
-          state.setSelectingOriginOrDestination(undefined);
-          $('form#mode input:first').parent().focus();
-        } else {
-          state.setSelectingOriginOrDestination('origin');
-        }
-      });
-      $('form#origin input, form#destination input').on('focus', function(e) {
-        state.setEntireCity(false);
-      });
-      $('div.year div.slider').year_range_slider(state);
-      state.setSelectingOriginOrDestination('origin');
-
-      $('div#details div.entire-city a').on('click', function(e) {
-        e.preventDefault();
-        if (state.entireCity) {
-          state.setEntireCity(false);
-        } else {
-          state.setEntireCity(true);
-        }
-      });
-
-      $('a#reset').on('click', function(e) {
-        state.setOrigin(undefined);
-        state.setDestination(undefined);
-        state.setSelectingOriginOrDestination('origin');
-      });
-      var resetShouldBeVisible = false;
-      state.onChange('selectingOriginOrDestination', function(originOrDestination) {
-        var newResetShouldBeVisible = (!originOrDestination && state.origin && state.destination);
-        if (newResetShouldBeVisible != resetShouldBeVisible) {
-          var $reset = $('a#reset');
-          resetShouldBeVisible = newResetShouldBeVisible;
-          if (resetShouldBeVisible) {
-            $reset.fadeIn();
+        var setSelecting = function(selecting) {
+          // This one took forever to debug. When you add a map listener for click *in* a click handler, it fires right away in MSIE
+          window.setTimeout(function() {
+            state.setSelectingOriginOrDestination(selecting);
+          }, 13);
+        };
+        $('form#origin').address_form('origin', state, map, function() {
+          if (state.destination) {
+            $('form#origin input').blur();
+            $('form#mode input:first').parent().focus();
+            setSelecting(undefined);
           } else {
-            $reset.fadeOut();
+            setSelecting('destination');
           }
-        }
+        });
+        $('form#destination').address_form('destination', state, map, function() {
+          if (state.origin) {
+            $('form#destination input').blur();
+            $('form#mode input:first').parent().focus();
+            setSelecting(undefined);
+          } else {
+            setSelecting('origin');
+          }
+        });
+        $('form#origin input, form#destination input').on('focus', function(e) {
+          state.setEntireCity(false);
+        });
+        $('div.year div.slider').year_range_slider(state);
+        state.setSelectingOriginOrDestination('origin');
+
+        $('div#details div.entire-city a').on('click', function(e) {
+          e.preventDefault();
+          if (state.entireCity) {
+            state.setEntireCity(false);
+          } else {
+            state.setEntireCity(true);
+          }
+        });
+
+        $('a#reset').on('click', function(e) {
+          state.setOrigin(undefined);
+          state.setDestination(undefined);
+          state.setSelectingOriginOrDestination('origin');
+        });
+        var resetShouldBeVisible = false;
+        state.onChange('selectingOriginOrDestination', function(originOrDestination) {
+          var newResetShouldBeVisible = (!originOrDestination && state.origin && state.destination);
+          if (newResetShouldBeVisible != resetShouldBeVisible) {
+            var $reset = $('a#reset');
+            resetShouldBeVisible = newResetShouldBeVisible;
+            if (resetShouldBeVisible) {
+              $reset.fadeIn();
+            } else {
+              $reset.fadeOut();
+            }
+          }
+        });
+
+        var entireCityLinkText = $('div#details div.entire-city a').text();
+        state.onChange('entireCity', function(entireCity) {
+          var $dataLinks = $('div#details div.chart a, div#details div.data a');
+          var $entireCityLink = $('div#details div.entire-city a');
+          if (entireCity) {
+            $dataLinks.css('opacity', 0.5);
+            $entireCityLink.text('Back to your route');
+          } else {
+            $dataLinks.css('opacity', 1);
+            $entireCityLink.text(entireCityLinkText);
+          }
+        });
+
+        $('div#details div.chart a, div#details div.data a').click(function() {
+          state.setEntireCity(false);
+        });
+
+        $('div#details div.other-cities a').on('click', function(e) {
+          e.preventDefault();
+          // When route disappears, city-selection pops up
+          state.setOrigin(undefined);
+          state.setDestination(undefined);
+          $('form#origin a').click();
+        });
+
+        var stuffShouldBeVisible = false;
+
+        var resetWhatsVisible = function() {
+          var newStuffShouldBeVisible = !(state.routes.bicycling === undefined && state.routes.driving === undefined);
+          if (newStuffShouldBeVisible == stuffShouldBeVisible) return;
+          stuffShouldBeVisible = newStuffShouldBeVisible;
+
+          var $citySelector = $('ul#city');
+          var $legend = $('ul#legend');
+          var $details = $('div#details');
+          var $text = $('div#text');
+
+          if (stuffShouldBeVisible) {
+            $legend.slideDown();
+            $details.slideDown();
+            $citySelector.slideUp();
+            $text.slideUp();
+          } else {
+            $legend.slideUp();
+            $details.slideUp();
+            $citySelector.slideDown();
+            $text.slideDown();
+          }
+        };
+
+        state.onChange('routes', resetWhatsVisible);
+        $.fx.off = true;
+        resetWhatsVisible();
+        $.fx.off = false;
       });
-
-      var entireCityLinkText = $('div#details div.entire-city a').text();
-      state.onChange('entireCity', function(entireCity) {
-        var $dataLinks = $('div#details div.chart a, div#details div.data a');
-        var $entireCityLink = $('div#details div.entire-city a');
-        if (entireCity) {
-          $dataLinks.css('opacity', 0.5);
-          $entireCityLink.text('Back to your route');
-        } else {
-          $dataLinks.css('opacity', 1);
-          $entireCityLink.text(entireCityLinkText);
-        }
-      });
-
-      $('div#details div.chart a, div#details div.data a').click(function() {
-        state.setEntireCity(false);
-      });
-
-      $('div#details div.other-cities a').on('click', function(e) {
-        e.preventDefault();
-        // When route disappears, city-selection pops up
-        state.setOrigin(undefined);
-        state.setDestination(undefined);
-        $('form#origin a').click();
-      });
-
-      var stuffShouldBeVisible = false;
-
-      var resetWhatsVisible = function() {
-        var newStuffShouldBeVisible = !(state.routes.bicycling === undefined && state.routes.driving === undefined);
-        if (newStuffShouldBeVisible == stuffShouldBeVisible) return;
-        stuffShouldBeVisible = newStuffShouldBeVisible;
-
-        var $citySelector = $('ul#city');
-        var $legend = $('ul#legend');
-        var $details = $('div#details');
-        var $text = $('div#text');
-
-        if (stuffShouldBeVisible) {
-          $legend.slideDown();
-          $details.slideDown();
-          $citySelector.slideUp();
-          $text.slideUp();
-        } else {
-          $legend.slideUp();
-          $details.slideUp();
-          $citySelector.slideDown();
-          $text.slideDown();
-        }
-      };
-
-      state.onChange('routes', resetWhatsVisible);
-      $.fx.off = true;
-      resetWhatsVisible();
-      $.fx.off = false;
     </script>
   </body>
 </html>

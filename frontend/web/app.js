@@ -1445,19 +1445,17 @@
     maybeLookupAddress = function() {
       var addressTyped;
       addressTyped = $input.val();
-      if (addressTyped === lastAddressTyped) return false;
-      if ($.trim(addressTyped || '').length > 0) {
+      if ($.trim(addressTyped || '').length > 0 && addressTyped !== lastAddressTyped) {
         setError(void 0);
         setStatus('Looking up address');
         lastAddressTyped = addressTyped;
-        geocoder.geocode({
+        return geocoder.geocode({
           'address': addressTyped,
           'bounds': getCityBounds()
         }, function(results, status) {
           return handleGeocoderResult(results, status);
         });
       }
-      return true;
     };
     handleGeocoderResult = function(results, status) {
       setByGeocoder = true;
@@ -1467,12 +1465,11 @@
         set(null);
       } else if (status === google.maps.GeocoderStatus.OK) {
         set(results[0].geometry.location);
-        if (typeof callback === "function") callback();
-        true;
       } else {
         setError('Failed to look up address');
         set(null);
       }
+      if (typeof callback === "function") callback();
       return setByGeocoder = false;
     };
     lookupLatLng = function(latlng) {
@@ -1502,7 +1499,7 @@
       return $input.val(lastAddressTyped);
     };
     onTypeAddress = function() {
-      return maybeLookupAddress() || state.setSelectingOriginOrDestination(void 0);
+      return maybeLookupAddress();
     };
     $input.on('focus', function() {
       return state.setSelectingOriginOrDestination(originOrDestination);
@@ -1516,7 +1513,6 @@
     });
     abortClickingOnMap = function() {
       if (!(mapListener != null)) return;
-      $input.blur();
       $hint.fadeOut();
       google.maps.event.removeListener(mapListener);
       return mapListener = void 0;
@@ -1527,10 +1523,12 @@
         $input.focus();
         $hint.fadeIn();
         return mapListener = google.maps.event.addListenerOnce(map, 'click', function(e) {
+          var clicking;
+          if (!(mapListener != null)) return;
           mapListener = void 0;
+          clicking = true;
           set(e.latLng);
           $hint.fadeOut();
-          $input.blur();
           if (typeof callback === "function") callback();
           return true;
         });

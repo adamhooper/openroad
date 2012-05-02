@@ -1095,9 +1095,8 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
 
   maybeLookupAddress = () ->
     addressTyped = $input.val()
-    return false if addressTyped == lastAddressTyped
 
-    if $.trim(addressTyped || '').length > 0
+    if $.trim(addressTyped || '').length > 0 && addressTyped != lastAddressTyped
       setError(undefined)
       setStatus('Looking up address')
       lastAddressTyped = addressTyped
@@ -1107,7 +1106,6 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       }, (results, status) ->
         handleGeocoderResult(results, status)
       )
-    return true
 
   handleGeocoderResult = (results, status) ->
     setByGeocoder = true
@@ -1118,11 +1116,10 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       set(null)
     else if status == google.maps.GeocoderStatus.OK
       set(results[0].geometry.location)
-      callback?()
-      true
     else
       setError('Failed to look up address')
       set(null)
+    callback?()
     setByGeocoder = false
 
   lookupLatLng = (latlng) ->
@@ -1151,7 +1148,7 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
     $input.val(lastAddressTyped)
 
   onTypeAddress = () ->
-    maybeLookupAddress() || state.setSelectingOriginOrDestination(undefined)
+    maybeLookupAddress()
 
   $input.on('focus', () -> state.setSelectingOriginOrDestination(originOrDestination))
   $form.on 'submit', (e) ->
@@ -1162,7 +1159,6 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
 
   abortClickingOnMap = () ->
     return if !mapListener?
-    $input.blur()
     $hint.fadeOut()
     google.maps.event.removeListener(mapListener)
     mapListener = undefined
@@ -1175,10 +1171,11 @@ $.fn.address_form = (originOrDestination, state, map, callback = undefined) ->
       $hint.fadeIn()
 
       mapListener = google.maps.event.addListenerOnce map, 'click', (e) ->
+        return if !mapListener?
         mapListener = undefined
+        clicking=true
         set(e.latLng)
         $hint.fadeOut()
-        $input.blur()
         callback?()
         true
 
