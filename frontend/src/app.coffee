@@ -567,7 +567,7 @@ class TrendChartRenderer
       axes: {
         xaxis: {
           min: @state.minYear - 1,
-          max: @state.maxYear,
+          max: @state.maxYear + 1,
           tickInterval: yearTickInterval,
           showTickMarks: false,
           tickOptions: {

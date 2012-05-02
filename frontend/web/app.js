@@ -778,7 +778,7 @@
         axes: {
           xaxis: {
             min: this.state.minYear - 1,
-            max: this.state.maxYear,
+            max: this.state.maxYear + 1,
             tickInterval: yearTickInterval,
             showTickMarks: false,
             tickOptions: {
