@@ -413,7 +413,6 @@ div#data-dialog td.id, div#data-dialog td.distance_along_path {
 }
 
 div#data-dialog .address {
-  display: block;
   width: 1px;
   overflow: hidden;
   padding: 0;
