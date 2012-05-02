@@ -624,7 +624,6 @@ class AccidentsMarkerRenderer
 
     calculateMarkerStyleIndex = (markers, nIconStyles) ->
       text = "#{markers.length}"
-      text = ' ' if markers.length == 1
       { text: text, index: 1 }
 
     iconStyles = [

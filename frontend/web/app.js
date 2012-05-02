@@ -860,7 +860,6 @@
       calculateMarkerStyleIndex = function(markers, nIconStyles) {
         var text;
         text = "" + markers.length;
-        if (markers.length === 1) text = ' ';
         return {
           text: text,
           index: 1
