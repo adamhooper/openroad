@@ -1,4 +1,4 @@
-URL = 'http://localhost:8000/%{city}'
+URL = "http://#{window.location.host}/%{city}"
 DEFAULT_MIN_YEAR = 2007
 DEFAULT_MAX_YEAR = 2011
 

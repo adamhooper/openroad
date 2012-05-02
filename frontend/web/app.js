@@ -2,7 +2,7 @@
   var AccidentFinder, AccidentsMarkerRenderer, AccidentsTableRenderer, CITIES, COLORS, ChartSeriesMaker, DEFAULT_MAX_YEAR, DEFAULT_MIN_YEAR, Manager, RouteFinder, RouteRenderer, State, TrendChartRenderer, URL, WORST_ACCIDENT_RADIUS, WorstLocationsRenderer, keepMapInStateBounds, originalClusterIconCreateCss, selectText, showFusionTablesLayer, show_accidents_dialog, syncOriginDestinationMarkers,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-  URL = 'http://localhost:8000/%{city}';
+  URL = "http://" + window.location.host + "/%{city}";
 
   DEFAULT_MIN_YEAR = 2007;
 
