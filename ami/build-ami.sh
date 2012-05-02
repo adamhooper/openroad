@@ -23,6 +23,8 @@ rmdir "$MOUNT_DIR"
 mkdir "$MOUNT_DIR"
 sudo mount -o loop "$UBUNTU_IMAGE_FILENAME" "$MOUNT_DIR"
 
+pg_dump -Fc -O -f "$DIR/bikefile-data.psql" bikefile
+
 # Set up chroot-i-ness
 #sudo cp /etc/resolv.conf "$MOUNT_DIR"/etc/resolv.conf
 sudo chroot "$MOUNT_DIR" mount -t proc none /proc
@@ -32,8 +34,6 @@ cat <<EOF | sudo tee "$MOUNT_DIR"/usr/sbin/policy-rc.d > /dev/null
 exit 101
 EOF
 sudo chmod 755 "$MOUNT_DIR"/usr/sbin/policy-rc.d
-
-pg_dump -Fc -O -f "$MOUNT_DIR/opt/bikefile/bikefile-data.psql" bikefile
 
 cat "$FILELIST" | while read -a line; do
   orig=${line[0]}
