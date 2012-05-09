@@ -5,9 +5,9 @@ DSN = 'dbname=bikefile user=bikefile password=bikefile host=localhost'
 
 RANGE_IN_M = 30
 ERROR_IN_M = 25
-MAX_DISTANCE_IN_M = 8000
+MAX_DISTANCE_IN_M = 20000
 DEFAULT_MIN_DATE = '2007-01-01'
-DEFAULT_MAX_DATE = '2011-01-01'
+DEFAULT_MAX_DATE = '2011-12-31'
 
 import cgi
 import json
