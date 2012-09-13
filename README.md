@@ -42,3 +42,9 @@ It would be easy to replace WSGI with PHP, but few hosting providers have fast, 
 We use Amazon Web Services. Create an account, an X.509 certificate ... the works. Then run `ami/build-ami.sh` and then `ami-upload-ami.sh` to upload an Amazon Machine Image to S3. You can launch it from the AWS website. To upload front-end modifications, copy the files in `frontend/web/` to `ubuntu@machine:/opt/bikefile/frontend`. To upload back-end modifications, copy a PostgreSQL dump to `machine:/opt/bikefile/bikefile-data.psql` and the WSGI server to `machine:/opt/bikefile/backend/`, then run `sudo /etc/init.d/bikefile_uwsgi stop; sudo /etc/init.d/bikefile_uwsgi start`.
 
 The hosted solution loads the entire database from the dump file into a ramdisk on start. That might not be an improvement over PostgreSQL's caching mechanisms (I haven't tested), but it's the closest we could get to the "really, we just have one data file" mentality.
+
+# License
+
+Everything in this directory is public-domain, except for the `.js` and `.css` files in `frontend/web/` which have license information in their headers. (The `.js` and `.css` files which don't are public domain.)
+
+Want another license? Ask adam@adamhooper.com and you shall receive.
