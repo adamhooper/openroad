@@ -1,6 +1,13 @@
-URL = "http://#{window.location.host}/%{city}"
+URL = "/%{city}"
 DEFAULT_MIN_YEAR = 2007
 DEFAULT_MAX_YEAR = 2011
+
+RANGE_IN_M = 30
+ERROR_IN_M = 25
+DEFAULT_MIN_DATE = '2007-01-01'
+DEFAULT_MAX_DATE = '2011-12-31'
+M_PER_DEGREE = 110574.27 # very rough
+ERROR_IN_DEGREES = ERROR_IN_M / M_PER_DEGREE
 
 COLORS = {
   driving: '#0e3b5d',
@@ -83,6 +90,20 @@ CITIES = {
   },
 }
 
+parseCsvData = (data) ->
+  raw_rows = CSV.parse(data)
+  headers = raw_rows[0]
+
+  id = 1
+  raw_rows[1..].map (row) =>
+    properties = {}
+    for i in [0...headers.length]
+      properties[headers[i]] = row[i]
+    properties.Year = +properties.Time[0...4]
+    properties.id = id
+    id++
+    turf.point([+properties.Longitude, +properties.Latitude], properties)
+
 WORST_ACCIDENT_RADIUS = 7 # metres.
 # Two accidents can be double this apart and count as one location.
 
@@ -105,9 +126,11 @@ selectText = (element) ->
     selection.removeAllRanges()
     selection.addRange(range)
 
+
 class State
   constructor: (options = {}) ->
     @city = options.city || 'toronto'
+    @allAccidents = []
     @mode = 'bicycling'
     @origin = options.origin
     @destination = options.destination
@@ -149,18 +172,9 @@ class State
       for callback in callbacks
         callback(arg1)
 
-  setCity: (city) ->
-    return if @city == city
-    this.clearAccidents()
-    this.clearRoutes()
-    this.setDestination(undefined)
-    this.setOrigin(undefined)
-    this.setEntireCity(false)
-    @city = city
-    # clamp date range
-    this.setMinYear(@minYear)
-    this.setMaxYear(@maxYear)
-    this._changed('city', @city)
+  setAllAccidents: (data) ->
+    @allAccidents = data
+    this._changed('allAccidents', data)
 
   setMode: (mode) ->
     return if @mode == mode
@@ -240,9 +254,15 @@ class State
 
 window.State = State
 
+class DataFetcher
+  constructor: (@state) ->
+    # TODO fix race condition
+    fetch("/data/#{@state.city}.csv")
+      .then((response) => response.text())
+      .then((data) => @state.setAllAccidents(parseCsvData(data)))
+
 class RouteFinder
   constructor: (@state) ->
-    @state.onChange('city', () => this.refresh())
     @state.onChange('origin', () => this.refresh())
     @state.onChange('destination', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
@@ -348,6 +368,7 @@ class RouteRenderer
 class AccidentFinder
   constructor: (@state) ->
     @_requests = {} # mode => ajax
+    @state.onChange('allAccidents', () => this.refresh())
     @state.onChange('routes', () => this.refresh())
     @state.onChange('minYear', () => this.refresh())
     @state.onChange('maxYear', () => this.refresh())
@@ -357,25 +378,30 @@ class AccidentFinder
       this._refreshAccidents(mode)
 
   _refreshAccidents: (mode) ->
-    if @_requests[mode]?
-      @_requests[mode].abort()
-      delete @_requests[mode]
-
     route = @state.routes[mode]
     return if !route?
 
-    encodedPolyline = route.routes[0].overview_polyline.points
-    postData = {
-      min_date: "#{@state.minYear}-01-01",
-      max_date: "#{@state.maxYear}-12-31",
-      encoded_polyline: encodedPolyline
-    }
-    url = URL.replace(/%\{city}/, @state.city)
+    polyline = turf.lineString(route.routes[0].overview_path.map(({ lat, lng }) -> [lng(), lat()]))
+    #turf.simplify(polyline, { tolerance: ERROR_IN_DEGREES, highQuality: true, mutate: true })
 
-    @_requests[mode] = $.ajax({ url: url, type: 'POST', data: postData, dataType: 'json', success: (data) =>
-      delete @_requests[mode]
-      @state.setAccidents(mode, data)
-    })
+    [minX, minY, maxX, maxY] = turf.bbox(polyline)
+    options = { units: 'metres' }
+
+    data = []
+    @state.allAccidents.forEach (accident) =>
+      return if accident.properties.Year < @state.minYear
+      return if accident.properties.Year > @state.maxYear
+      snapped = turf.nearestPointOnLine(polyline, accident, options)
+      return if snapped.properties.dist > RANGE_IN_M
+      data.push({
+        ...accident,
+        properties: {
+          ...accident.properties,
+          distance_along_path: snapped.properties.location
+        }
+      })
+
+    @state.setAccidents(mode, data)
 
 class ChartSeriesMaker
   constructor: () ->
@@ -402,7 +428,7 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
 
     headings = []
 
-    for heading, value of accidents[0]
+    for heading, value of accidents[0].properties
       continue if heading == 'id'
       continue if heading == 'distance_along_path'
       continue if heading == 'Time'
@@ -436,8 +462,8 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
       for accident in modeAccidents
         $tr = $("<tr class=\"#{mode}\">" + ('<td></td>' for key in keys).join('') + '</tr>')
         $tr.attr('class', trClass)
-        $tr.attr('class', "accident-#{accident.id}")
-        $tr.attr('id', "accident-#{mode}-#{accident.id}")
+        $tr.attr('class', "accident-#{accident.properties.id}")
+        $tr.attr('id', "accident-#{mode}-#{accident.properties.id}")
         $tds = $tr.children()
 
         if trClass == 'odd' then trClass = 'even' else trClass = 'odd'
@@ -445,7 +471,7 @@ show_accidents_dialog = (@state, onlyIds=undefined) ->
         for key, i in keys
           heading = headings[i-2]
           $tds[i].className = key
-          text = accident[heading] || accident[key]
+          text = accident.properties[heading] || accident.properties[key]
           text = "#{text}m (#{mode})" if key == 'distance_along_path'
           textNode = document.createTextNode(text || '')
           $tds[i].appendChild(textNode)
@@ -528,7 +554,7 @@ class TrendChartRenderer
       continue unless mode == @state.mode || @state.mode == 'both'
       seriesMaker = new ChartSeriesMaker()
       for accident in accidents
-        seriesMaker.add(accident.Time.split(/-/)[0]) # year
+        seriesMaker.add(accident.properties.Time.split(/-/)[0]) # year
       series[mode] = seriesMaker.getSeries()
 
     maxAccidents = 1
@@ -649,14 +675,14 @@ class AccidentsMarkerRenderer
   _createMarkerArray: (mode, accidents) ->
     arr = []
     for accident in accidents
-      latitude = accident.Latitude
-      longitude = accident.Longitude
+      latitude = accident.properties.Latitude
+      longitude = accident.properties.Longitude
       latLng = new google.maps.LatLng(latitude, longitude)
       marker = new google.maps.Marker({
         position: latLng,
         flat: true,
       })
-      marker.accidentUniqueKey = "#{accident.id}"
+      marker.accidentUniqueKey = "#{accident.properties.id}"
       arr.push(marker)
 
     arr
@@ -731,7 +757,7 @@ class WorstLocationsRenderer
 
     # 1. Calculate all those stretches, in a sparse array of arrays, indexed by meter
     for accident in accidents
-      distance_along_path = + ('' + accident.distance_along_path).replace(/[^\d]*/g, '')
+      distance_along_path = Math.round(accident.properties.distance_along_path)
 
       for d in [(distance_along_path - WORST_ACCIDENT_RADIUS) .. (distance_along_path + WORST_ACCIDENT_RADIUS)]
         continue if d < 0
@@ -751,7 +777,7 @@ class WorstLocationsRenderer
 
       # Remove these accidents from our "worst accident spot" contendors
       for accident in topGroup
-        distance_along_path = + ('' + accident.distance_along_path).replace(/[^\d]*/g, '')
+        distance_along_path = Math.round(accident.properties.distance_along_path)
 
         for d in [(distance_along_path - WORST_ACCIDENT_RADIUS) .. (distance_along_path + WORST_ACCIDENT_RADIUS)]
           continue if d < 0 || d >= objs.length
@@ -782,8 +808,8 @@ class WorstLocationsRenderer
 
         # Search for the duplicates
         for accident in topGroup
-          if idToSpot[accident.id]?
-            topSpot = idToSpot[accident.id]
+          if idToSpot[accident.properties.id]?
+            topSpot = idToSpot[accident.properties.id]
             topSpot.mode = 'both'
             break
 
@@ -794,8 +820,8 @@ class WorstLocationsRenderer
 
         # Merge/copy into the array
         for accident in topGroup
-          if !idToSpot[accident.id]?
-            idToSpot[accident.id] = topSpot
+          if !idToSpot[accident.properties.id]?
+            idToSpot[accident.properties.id] = topSpot
             topSpot.accidents.push(accident)
 
     topSpots.sort((a, b) -> b.accidents.length - a.accidents.length)
@@ -811,8 +837,9 @@ class WorstLocationsRenderer
     sumLatitude = 0
     sumLongitude = 0
     for accident in topSpot.accidents
-      sumLatitude += accident.Latitude
-      sumLongitude += accident.Longitude
+      [longitude, latitude] = accident.geometry.coordinates
+      sumLatitude += latitude
+      sumLongitude += longitude
 
     topSpot.Latitude = sumLatitude / topSpot.accidents.length
     topSpot.Longitude = sumLongitude / topSpot.accidents.length
@@ -857,7 +884,7 @@ class WorstLocationsRenderer
     # Wait for the image to be drawn so we know its height
     window.setTimeout(() ->
       $img = $html.find('img')
-      url = "http://maps.googleapis.com/maps/api/streetview?sensor=false&size=#{$img.width()}x#{Math.round($img.width()*9/16)}&location=#{topSpot.Latitude},#{topSpot.Longitude}"
+      url = "https://maps.googleapis.com/maps/api/streetview?size=#{$img.width()}x#{Math.round($img.width()*9/16)}&location=#{topSpot.Latitude},#{topSpot.Longitude}&key=AIzaSyDWrbWJ46ET44B2Z0UFdqsT3DbsZXKXuqU"
       $img.attr('src', url)
     , 50)
 
@@ -946,8 +973,6 @@ keepMapInStateBounds = (map, state) ->
     map.setCenter(latLng)
     map.setZoom(cityData.zoom)
 
-  state.onChange 'city', (city) ->
-    fitMapToCityBounds(city)
   fitMapToCityBounds(state.city)
 
   extendMapBoundsToFitPosition = (latLng) ->
@@ -1042,11 +1067,11 @@ showFusionTablesLayer = (state, map) ->
 
   state.onChange('minYear', refresh)
   state.onChange('maxYear', refresh)
-  state.onChange('city', refreshFusionTableId)
   state.onChange('entireCity', refresh)
 
 class Manager
   constructor: (map, state, chartLink, dataLink, worstLocationsDiv) ->
+    new DataFetcher(state)
     new RouteFinder(state)
     new RouteRenderer(state, map)
     new AccidentFinder(state)
@@ -1245,10 +1270,6 @@ $.fn.year_range_slider = (state) ->
     if year != $(this).slider('values', 1)
       updateText()
       $(this).slider('values', 1, year)
-
-  state.onChange 'city', (city) =>
-    $(this).slider('destroy')
-    init()
 
   $(this).on 'slidechange', () ->
     updateState()
