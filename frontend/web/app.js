@@ -863,9 +863,8 @@
     }
 
     _createClusterer() {
-      var calculateMarkerStyleIndex, clusterUrlRoot, iconStyles;
+      var calculateMarkerStyleIndex, iconStyles;
       iconStyles = [];
-      clusterUrlRoot = `${window.location.protocol}//${window.location.host}${window.location.pathname.replace(/[^\/]*$/, '')}/icons`;
       calculateMarkerStyleIndex = function(markers, nIconStyles) {
         var text;
         text = `${markers.length}`;
@@ -880,7 +879,7 @@
           height: 18,
           textSize: 10,
           textColor: '#000000',
-          url: `${clusterUrlRoot}/marker-accident.png`
+          url: "/icons/marker-accident.png"
         }
       ];
       return new MarkerClusterer(this.map, [], {

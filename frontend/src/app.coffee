@@ -574,8 +574,6 @@ class AccidentsMarkerRenderer
   _createClusterer: () ->
     iconStyles = []
 
-    clusterUrlRoot = "#{window.location.protocol}//#{window.location.host}#{window.location.pathname.replace(/[^\/]*$/, '')}/icons"
-
     calculateMarkerStyleIndex = (markers, nIconStyles) ->
       text = "#{markers.length}"
       { text: text, index: 1 }
@@ -586,7 +584,7 @@ class AccidentsMarkerRenderer
         height: 18,
         textSize: 10,
         textColor: '#000000',
-        url: "#{clusterUrlRoot}/marker-accident.png",
+        url: "/icons/marker-accident.png",
       }
     ]
 

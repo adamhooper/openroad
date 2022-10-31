@@ -4,7 +4,7 @@
     <title>Plot your bike path</title>
     <link rel="stylesheet" type="text/css" href="jquery.jqplot.min.css" />
     <link rel="stylesheet" type="text/css" href="jquery-ui-1.8.19.custom.css" />
-    <link href="http://fonts.googleapis.com/css?family=PT+Sans+Narrow:400,700" rel="stylesheet" type="text/css" />
+    <link href="//fonts.googleapis.com/css?family=PT+Sans+Narrow:400,700" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" type="text/css" href="app.css" />
   </head>
   <body>
@@ -120,19 +120,7 @@
         var bikeLayer = new google.maps.BicyclingLayer();
         bikeLayer.setMap(map);
 
-        var city = 'toronto'; // a default, at random
-        if (window.location.search && window.location.search.length > 1) {
-          var parts = window.location.search.substring(1).split(/&/);
-          for (var i = 0; i < parts.length; i++) {
-            var match = /city=([a-z]+)/.exec(parts[i]);
-            if (match) {
-              city = match[1];
-              break;
-            }
-          }
-        }
-
-        $('ul#city a.' + city).addClass('selected');
+        var city = 'toronto'; // the only one we have
         $('div#text span.city').text(city.substring(0, 1).toUpperCase() + city.substring(1));
         $('div#text img').attr('src', './charts/' + city + '.png');
 
@@ -207,7 +195,6 @@
           if (newStuffShouldBeVisible == stuffShouldBeVisible) return;
           stuffShouldBeVisible = newStuffShouldBeVisible;
 
-          var $citySelector = $('ul#city');
           var $legend = $('ul#legend');
           var $details = $('div#details');
           var $text = $('div#text');
@@ -215,12 +202,10 @@
           if (stuffShouldBeVisible) {
             $legend.slideDown();
             $details.slideDown();
-            $citySelector.slideUp();
             $text.slideUp();
           } else {
             $legend.slideUp();
             $details.slideUp();
-            $citySelector.slideDown();
             $text.slideDown();
           }
         };

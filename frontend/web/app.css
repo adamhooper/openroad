@@ -319,59 +319,6 @@ div#worst-locations img {
   bottom: 0;
 }
 
-ul#city {
-  margin: .5em 0;
-  padding: 0;
-  list-style: none;
-  height: 90px;
-}
-
-ul#city li {
-  float: left;
-  width: 150px;
-  height: 90px;
-  padding-left: 12px;
-}
-
-ul#city li.first {
-  padding-left: 0;
-}
-
-ul#city a {
-  display: block;
-  height: 90px;
-  line-height: 90px;
-  font-size: 70px;
-  text-align: center;
-  font-weight: bold;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: white;
-}
-
-ul#city a.selected {
-  color: #f9f298;
-}
-
-ul#city a.vancouver {
-  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=49.26901,-123.10065);
-}
-ul#city a.calgary {
-  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=51.03783,-114.09467);
-}
-ul#city a.toronto {
-  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=43.665122,-79.411213);
-}
-ul#city a.ottawa {
-  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=45.372683,-75.664255);
-}
-ul#city a.montreal {
-  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=45.517061,-73.564721);
-}
-ul#city a.halifax {
-  background: url(http://maps.googleapis.com/maps/api/streetview?sensor=false&size=150x90&location=44.615891,-63.614783);
-}
-
 div#data-dialog table {
   border-collapse: collapse;
   border: none;
