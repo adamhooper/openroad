@@ -47,24 +47,22 @@
       <li><img src="icons/marker-top-spot.png" alt="" /> Most accident-prone location</li>
     </ul>
     <div id="details" style="display:none;">
-      <div class="year">
-        <h2>Date range</h2>
-        <div class="slider"></div>
-        <div class="value"></div>
-      </div>
-      <div class="chart">
-        <h2><a href="#">View results by year</a></h2>
-      </div>
-      <div class="data">
-        <h2><a href="#">View accident reports</a></h2>
-      </div>
-      <div class="other-cities">
-        <h2><a href="#">Explore another city</a></h2>
-      </div>
-      <div class="entire-city">
-        <h2><a href="#">View city-wide accidents</a></h2>
-      </div>
-
+      <nav>
+        <div class="year">
+          <h2>Date range</h2>
+          <div class="slider"></div>
+          <div class="value"></div>
+        </div>
+        <div class="chart">
+          <h2><a href="#">View results by year</a></h2>
+        </div>
+        <div class="data">
+          <h2><a href="#">View accident reports</a></h2>
+        </div>
+        <div class="back-to-start">
+          <h2><a href="#">Back to start</a></h2>
+        </div>
+      </nav>
       <div id="worst-locations"></div>
     </div>
     <div id="text">
@@ -172,20 +170,8 @@
             setSelecting('origin');
           }
         });
-        $('form#origin input, form#destination input').on('focus', function(e) {
-          state.setEntireCity(false);
-        });
         $('div.year div.slider').year_range_slider(state);
         state.setSelectingOriginOrDestination('origin');
-
-        $('div#details div.entire-city a').on('click', function(e) {
-          e.preventDefault();
-          if (state.entireCity) {
-            state.setEntireCity(false);
-          } else {
-            state.setEntireCity(true);
-          }
-        });
 
         $('a#reset').on('click', function(e) {
           state.setOrigin(undefined);
@@ -206,24 +192,7 @@
           }
         });
 
-        var entireCityLinkText = $('div#details div.entire-city a').text();
-        state.onChange('entireCity', function(entireCity) {
-          var $dataLinks = $('div#details div.chart a, div#details div.data a');
-          var $entireCityLink = $('div#details div.entire-city a');
-          if (entireCity) {
-            $dataLinks.css('opacity', 0.5);
-            $entireCityLink.text('Back to your route');
-          } else {
-            $dataLinks.css('opacity', 1);
-            $entireCityLink.text(entireCityLinkText);
-          }
-        });
-
-        $('div#details div.chart a, div#details div.data a').click(function() {
-          state.setEntireCity(false);
-        });
-
-        $('div#details div.other-cities a').on('click', function(e) {
+        $('div#details div.back-to-start a').on('click', function(e) {
           e.preventDefault();
           // When route disappears, city-selection pops up
           state.setOrigin(undefined);

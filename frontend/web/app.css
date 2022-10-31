@@ -154,8 +154,6 @@ div#details {
   margin-top: .5em;
   position: relative;
   color: #223b5d;
-  padding-top: 5.5em;
-  height: 12em; /* IE7- doesn't show it otherwise */
 }
 
 div#details h2 {
@@ -176,34 +174,27 @@ div#details h2 a {
   padding-bottom: 83px;
 }
 
-div#details div.year, div#details div.chart, div#details div.data, div#details div.other-cities, div#details div.entire-city {
-  position: absolute;
-  top: 0;
+div#details nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 1em;
 }
 
 div#details div.year {
-  left: 0;
+  position: relative;
   width: 32%;
 }
 
 div#details div.chart {
-  left: 32%;
   width: 17%;
 }
 
 div#details div.data {
-  left: 49%;
   width: 17%;
 }
 
-div#details div.other-cities {
+div#details div.back-to-start {
   border-left: 2px solid #f9f298;
-  left: 66%;
-  width: 17%;
-}
-
-div#details div.entire-city {
-  left: 83%;
   width: 17%;
 }
 
@@ -277,12 +268,8 @@ div#details div.data a {
   background: url(icons/accident-data-small.png) no-repeat center bottom;
 }
 
-div#details div.other-cities a {
+div#details div.back-to-start a {
   background: url(icons/choose-another-city-small.png) no-repeat center bottom;
-}
-
-div#details div.entire-city a {
-  background: url(icons/entire-city-small.png) no-repeat center bottom;
 }
 
 div#worst-locations {

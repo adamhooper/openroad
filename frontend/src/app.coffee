@@ -16,76 +16,15 @@ COLORS = {
 }
 
 CITIES = {
-  vancouver: {
-    latitude: 49.2505,
-    longitude: -123.1119,
-    zoom: 12,
-    minYear: 2006,
-    maxYear: 2010,
-    fusionTableId: 3731863,
-    bounds: new google.maps.LatLngBounds(
-      new google.maps.LatLng(49.131859, -123.264954),
-      new google.maps.LatLng(49.352188, -122.985718)
-    ),
-  },
-  calgary: {
-    latitude: 51.0451,
-    longitude: -114.0569,
-    zoom: 12,
-    minYear: 1996,
-    maxYear: 2011,
-    fusionTableId: 3733170,
-    bounds: new google.maps.LatLngBounds(
-      new google.maps.LatLng(50.842941, -114.613968),
-      new google.maps.LatLng(51.343868, -113.901817)
-    ),
-  },
   toronto: {
     latitude: 43.6517,
     longitude: -79.3827,
     zoom: 13,
     minYear: 1986,
     maxYear: 2010,
-    fusionTableId: 3733171,
     bounds: new google.maps.LatLngBounds(
       new google.maps.LatLng(43.584740, -79.639297),
       new google.maps.LatLng(43.855419, -79.115623)
-    ),
-  },
-  ottawa: {
-    latitude: 45.4214,
-    longitude: -75.6919,
-    zoom: 13,
-    minYear: 1999,
-    maxYear: 2010,
-    fusionTableId: 3734609,
-    bounds: new google.maps.LatLngBounds(
-      new google.maps.LatLng(44.962002, -76.355766),
-      new google.maps.LatLng(45.536541, -75.246033)
-    ),
-  },
-  montreal: {
-    latitude: 45.5081,
-    longitude: -73.5550,
-    zoom: 13,
-    minYear: 2006,
-    maxYear: 2010,
-    fusionTableId: 3731866,
-    bounds: new google.maps.LatLngBounds(
-      new google.maps.LatLng(45.413479, -73.976608),
-      new google.maps.LatLng(45.704788, -73.476418)
-    ),
-  },
-  halifax: {
-    latitude: 44.6479,
-    longitude: -63.5744,
-    zoom: 13,
-    minYear: 2007,
-    maxYear: 2010,
-    fusionTableId: 3733175,
-    bounds: new google.maps.LatLngBounds(
-      new google.maps.LatLng(44.434570, -64.237190),
-      new google.maps.LatLng(45.276489, -62.160469)
     ),
   },
 }
@@ -140,7 +79,6 @@ class State
     @accidents = {} # keyed by 'bicycling' and 'driving'
     @listeners = {}
     @frozen = {}
-    @entireCity = false
     @selectingOriginOrDestination = undefined
     # @routes is always set before @accidents
 
@@ -180,13 +118,11 @@ class State
     return if @mode == mode
     @mode = mode
     this._changed('mode', @mode)
-    this.setEntireCity(false)
 
   setOrigin: (latlng) ->
     return if latlng == @origin
     this.clearAccidents()
     this.clearRoutes()
-    this.setEntireCity(false)
     @origin = latlng
     this._changed('origin', @origin)
 
@@ -194,7 +130,6 @@ class State
     return if latlng == @destination
     this.clearAccidents()
     this.clearRoutes()
-    this.setEntireCity(false)
     @destination = latlng
     this._changed('destination', @destination)
 
@@ -239,11 +174,6 @@ class State
   clearAccidents: () ->
     @accidents = {}
     this._changed('accidents', @accidents)
-
-  setEntireCity: (entireCity) ->
-    return if entireCity == @entireCity
-    @entireCity = entireCity
-    this._changed('entireCity', @entireCity)
 
   setSelectingOriginOrDestination: (selectingOriginOrDestination) ->
     return if selectingOriginOrDestination == @selectingOriginOrDestination
@@ -333,7 +263,6 @@ class RouteRenderer
 
     @state.onChange('routes', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
-    @state.onChange('entireCity', () => this.refresh())
 
   refresh: () ->
     for mode in [ 'bicycling', 'driving' ]
@@ -342,7 +271,7 @@ class RouteRenderer
       if route && (@state.mode == 'both' || mode == @state.mode)
         @_blockingStateChanges[mode] = true
         @renderers[mode].setDirections(route)
-        @renderers[mode].setMap(!@state.entireCity && @map || null)
+        @renderers[mode].setMap(@map)
         @_blockingStateChanges[mode] = false
       else
         @renderers[mode].setMap(null)
@@ -638,7 +567,6 @@ class AccidentsMarkerRenderer
 
     @state.onChange('accidents', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
-    @state.onChange('entireCity', () => this.refresh())
 
     google.maps.event.addListener @clusterer, 'click', (cluster) =>
       show_accidents_dialog(@state, ( marker.accidentUniqueKey for marker in cluster.getMarkers() ))
@@ -707,11 +635,6 @@ class AccidentsMarkerRenderer
     @clusterer.removeMarkers(@markers, true)
     @markers = []
 
-    if @state.entireCity
-      @markerArrays = {}
-      @clusterer.repaint()
-      return
-
     for mode in [ 'bicycling', 'driving' ]
       if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode)
         # There are accidents we want to render
@@ -747,7 +670,6 @@ class WorstLocationsRenderer
 
     @state.onChange('accidents', () => this.refresh())
     @state.onChange('mode', () => this.refresh())
-    @state.onChange('entireCity', () => this.refresh())
 
   _accidentsToTopGroups: (accidents) ->
     objs = []
@@ -946,7 +868,7 @@ class WorstLocationsRenderer
     changed = false
 
     for mode in [ 'bicycling', 'driving' ]
-      if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode) && !@state.entireCity
+      if @state.accidents[mode]? && (@state.mode == 'both' || @state.mode == mode)
         # There are accidents we want to render
         if !@topGroupsByMode[mode]?
           # And we aren't rendering them
@@ -999,13 +921,6 @@ syncOriginDestinationMarkers = (state, map) ->
     else
       markers[key].setMap(null)
 
-  syncVisible = () ->
-    for key, marker of markers
-      if state[key]? && !state.entireCity
-        marker.setMap(map)
-      else
-        marker.setMap(null)
-
   for key in keys
     markers[key] = new google.maps.Marker({
       clickable: false,
@@ -1036,38 +951,10 @@ syncOriginDestinationMarkers = (state, map) ->
 
   state.onChange('origin', (position) -> sync('origin', position))
   state.onChange('destination', (position) -> sync('destination', position))
-  state.onChange('entireCity', (entireCity) -> syncVisible())
 
   sync('origin', state.origin)
   sync('destination', state.destination)
 
-showFusionTablesLayer = (state, map) ->
-  fusionTableId = CITIES[state.city].fusionTableId
-
-  getOptions = () ->
-    {
-      query: {
-        select: 'Latitude',
-        from: fusionTableId,
-        where: "Time >= '#{state.minYear}' AND Time < '#{state.maxYear + 1}'",
-      },
-      clickable: state.entireCity,
-    }
-
-  layer = new google.maps.FusionTablesLayer(getOptions())
-  layer.setMap(fusionTableId && state.entireCity && map || null)
-
-  refresh = () ->
-    layer.setMap(fusionTableId && state.entireCity && map || null)
-    layer.setOptions(getOptions())
-
-  refreshFusionTableId = () ->
-    fusionTableId = CITIES[state.city].fusionTableId
-    refresh()
-
-  state.onChange('minYear', refresh)
-  state.onChange('maxYear', refresh)
-  state.onChange('entireCity', refresh)
 
 class Manager
   constructor: (map, state, chartLink, dataLink, worstLocationsDiv) ->
@@ -1085,7 +972,6 @@ class Manager
     new WorstLocationsRenderer(state, worstLocationsDiv, map)
     keepMapInStateBounds(map, state)
     syncOriginDestinationMarkers(state, map)
-    showFusionTablesLayer(state, map)
 
 window.Manager = Manager
 
